@@ -23,7 +23,7 @@
     DEALINGS IN THE SOFTWARE.
 """
 
-from Assign1.DES import compare
+from DES import compare
 
 Sbox = (
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -206,6 +206,9 @@ class AES:
                       'Bits Difference (Size 128)': f"n/a"}
         data_aes.append(data_entry)
 
+        s = pt_str
+        print(f"\nPlaintext Message: {0}: {' '.join(s[i:i + 2] for i in range(0, len(s), 2))}\n")
+
 
         self.plain_state = text2matrix(plaintext)
 
@@ -218,10 +221,17 @@ class AES:
                       'Bits Difference (Size 128)': f"n/a"}
         data_aes.append(data_entry)
 
+        s = hex(matrix2text(self.plain_state)).split('x')[-1].zfill(32)
+        t = hex(matrix2text(self.round_keys[:4])).split('x')[-1].zfill(32)
+        print(f"Round {0}: {' '.join(s[i:i + 2] for i in range(0, len(s), 2))} "
+              f"Round Key: ", ' '.join(t[i:i + 2] for i in range(0, len(s), 2)))
+
         for i in range(1, 10):
             self.__round_encrypt(self.plain_state, self.round_keys[4 * i: 4 * (i + 1)])
-            print(hex(matrix2text(self.plain_state)).split('x')[-1])
-            print("Round Key: ", hex(matrix2text(self.round_keys[4 * i: 4 * (i + 1)])).split('x')[-1].zfill(32))
+            s = hex(matrix2text(self.plain_state)).split('x')[-1].zfill(32)
+            t = hex(matrix2text(self.round_keys[4 * i: 4 * (i + 1)])).split('x')[-1].zfill(32)
+            print(f"Round {i}: {' '.join(s[i:i + 2] for i in range(0, len(s), 2))} "
+                  f"Round Key: ", ' '.join(t[i:i + 2] for i in range(0, len(s), 2)))
 
             data_entry = {'Round': f'{i}',
                           'Hexadecimal Comparison': f"{hex(matrix2text(self.plain_state)).split('x')[-1].zfill(32)}",
@@ -239,6 +249,13 @@ class AES:
                       'Round Key': f"{hex(matrix2text(self.round_keys[40:])).split('x')[-1].zfill(32)}",
                       'Bits Difference (Size 128)': f"n/a"}
         data_aes.append(data_entry)
+
+        s = hex(matrix2text(self.plain_state)).split('x')[-1].zfill(32)
+        t = hex(matrix2text(self.round_keys[40:])).split('x')[-1].zfill(32)
+        print(f"Round {10}: {' '.join(s[i:i + 2] for i in range(0, len(s), 2))} "
+              f"Round Key: ", ' '.join(t[i:i + 2] for i in range(0, len(s), 2)))
+
+        print(f"\nCiphertext message: {' '.join(s[i:i + 2] for i in range(0, len(s), 2))} \n")
 
         return matrix2text(self.plain_state), data_aes
 

@@ -458,7 +458,7 @@ def start_des(my_plain_text, my_key):
 	print("\nCipher Text: ", hex_cipher_text)
 
 	data_record.write_DES_original_to_csv(data)
-	print(data)
+	# print(data)
 
 
 def start_des_1_to_10_csv():

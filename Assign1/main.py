@@ -16,7 +16,7 @@ main.py
 """
 
 import DES
-import AES.aes
+import aes
 import data_record
 
 
@@ -44,15 +44,15 @@ def command_line_menu():
             DES.start_des(plain_text_hex.lower(), key_hex.lower())
         elif user_input == "2":
             print("Starting AES.")
-            master_key = int(input("Enter plain text (in hexadecimal): "), 16)
-            my_aes = AES.aes.AES(master_key)
-            plaintext_str = input("Enter key (in hexadecimal): ")
+            plaintext_str = input("Enter plain text (in hexadecimal): ")
             plaintext = int(plaintext_str, 16)
+            master_key = int(input("Enter key (in hexadecimal): "), 16)
+            my_aes = aes.AES(master_key)
 
             data_aes = []
             aes_original = data_record.read_AES_original_to_csv()
             encrypted, data = my_aes.encrypt_modified_original(plaintext, plaintext_str, data_aes)
-            print(data)
+            # print(data)
             data_record.write_AES_original_to_csv(data)
 
         elif user_input == "3":
@@ -275,7 +275,7 @@ def AES_SPAC_and_SKAC_bit_compare_check():
 
 def save_aes_original_csv():
     master_key = int("0f1571c947d9e8590cb7add6af7f6798", 16)
-    my_aes = AES.aes.AES(master_key)
+    my_aes = aes.AES(master_key)
 
     plaintext_str = "0123456789abcdeffedcba9876543210"
     plaintext = int(plaintext_str, 16)
@@ -320,7 +320,7 @@ def save_aes_1_to_10_bits_change_csv():
 
     for x in range(0, 10):
         master_key = int("0f1571c947d9e8590cb7add6af7f6798", 16)
-        my_aes = AES.aes.AES(master_key)
+        my_aes = aes.AES(master_key)
         plaintext_str = spac_1_to_10[x]
         plaintext = int(plaintext_str, 16)
 
@@ -332,7 +332,7 @@ def save_aes_1_to_10_bits_change_csv():
 
     for x in range(0, 10):
         master_key = int(skac_1_to_10[x], 16)
-        my_aes = AES.aes.AES(master_key)
+        my_aes = aes.AES(master_key)
         plaintext_str = "0123456789abcdeffedcba9876543210"
         plaintext = int(plaintext_str, 16)
 
