@@ -1,3 +1,18 @@
+"""
+----------------------------------------------------------------------------------------------------
+COMP 7402 - Cryptology
+Assignment 1:
+    - To learn how to analyze the strength of a cipher by analyzing its Confusion and Diffusion
+    characteristics using the Avalanche effect for SPAC and SKAC conditions in DES and AES ciphers.
+Student:
+    - Hung Yu (Angus) Lin, A01034410
+----------------------------------------------------------------------------------------------------
+data_record.py
+    - Contains utility functions for reading and writing to csv files.
+----------------------------------------------------------------------------------------------------
+"""
+
+
 import csv
 
 

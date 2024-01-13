@@ -10,8 +10,8 @@ Student:
     - Hung Yu (Angus) Lin, A01034410
 ----------------------------------------------------------------------------------------------------
 main.py
-    - Contains command line UI for user input to run and analyze Avalanche effect for DES and AES ciphers,
-    and save output into csv file.
+    - Contains command line UI for user input to display DES and AES ciphers text round by round, and
+    analyze Avalanche effect for SPAC and SKAc and save output into csv file.
 ----------------------------------------------------------------------------------------------------
 """
 
@@ -31,9 +31,10 @@ def command_line_menu():
         print(f"====================================\n"
               f"Menu:\n"
               f"    1. Start DES \n"
-              f"    2. Avalanche\n"
-              f"    3. Start DES (SPAC & SKAC) Avalanche output to CSV \n"
-              f"    4. Exit \n")
+              f"    2. Start AES \n"
+              f"    3. Avalanche Effect\n"
+              f"    4. Start DES & AES (SPAC & SKAC) Experiment 1 to 10 bit change to CSV \n"
+              f"    5. Exit \n")
         user_input = input("Type number and press enter: ")
 
         if user_input == "1":
@@ -42,20 +43,34 @@ def command_line_menu():
             key_hex = input("Enter key (in hexadecimal): ")
             DES.start_des(plain_text_hex.lower(), key_hex.lower())
         elif user_input == "2":
-            print("Starting Avalanche.")
+            print("Starting AES.")
+            master_key = int(input("Enter plain text (in hexadecimal): "), 16)
+            my_aes = AES.aes.AES(master_key)
+            plaintext_str = input("Enter key (in hexadecimal): ")
+            plaintext = int(plaintext_str, 16)
+
+            data_aes = []
+            aes_original = data_record.read_AES_original_to_csv()
+            encrypted, data = my_aes.encrypt_modified_original(plaintext, plaintext_str, data_aes)
+            print(data)
+            data_record.write_AES_original_to_csv(data)
+
+        elif user_input == "3":
+            print("Starting Avalanche Effect.")
             hex_string_1 = input("Enter hex string 1: ")
             hex_string_2 = input("Enter hex string 2: ")
             bit_by_bit_compare(hex_string_1, hex_string_2)
-        elif user_input == "3":
-            "DES_SPAC_1_to_10_bits_changed"
         elif user_input == "4":
+            print("Starting Experiment.")
+            DES.start_des_1_to_10_csv()
+            save_aes_1_to_10_bits_change_csv()
+
+        elif user_input == "5":
             print("Exiting Program.")
             break
         else:
             print("Invalid input, try again.")
             continue
-
-        print("todo, check string input is hexadecimal string")
 
 
 def bit_by_bit_compare(hex_string_1, hex_string_2):
@@ -351,8 +366,8 @@ if __name__ == "__main__":
     # save_aes_original_csv()
     # save_aes_1_to_10_bits_change_csv()
     # AES_SPAC_and_SKAC_bit_compare_check()
-    DES.start_des_1_to_10_csv()
-    exit()
+    # DES.start_des_1_to_10_csv()
+    # exit()
 
     try:
         command_line_menu()
