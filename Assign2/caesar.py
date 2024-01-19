@@ -16,28 +16,37 @@ ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
 def main (argv):
     
-    try:
-        opts, args = getopt.getopt (argv, "hm:t:k:",["encdec=", "stext=", "offset="])
+    # try:
+    #     opts, args = getopt.getopt (argv, "hm:t:k:",["encdec=", "stext=", "offset="])
     
-    except getopt.getoptError:
-        sys.exit (1)
+    # except getopt.getoptError:
+    #     sys.exit (1)
     
-    if len (sys.argv[1:]) < 6:
-        print ('Usage: ./caesar.py -m <encrypt/decrypt> -t <plain/cipher text> -k <offset>')
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print ('Usage: ./caesar.py -m <mode> -t <plain/cipher text> -k <offset>')
-            sys.exit ()
-        elif opt in ("-m", "--encdec"):
-            mode = arg
-        elif opt in ("-t", "--stext"):
-            message = arg
-        elif opt in ("-k", "--offset"):
-            key = int (arg)    
+    # if len (sys.argv[1:]) < 6:
+    #     print ('Usage: ./caesar.py -m <encrypt/decrypt> -t <plain/cipher text> -k <offset>')
+    #     sys.exit(2)
+    # for opt, arg in opts:
+    #     if opt == '-h':
+    #         print ('Usage: ./caesar.py -m <mode> -t <plain/cipher text> -k <offset>')
+    #         sys.exit ()
+    #     elif opt in ("-m", "--encdec"):
+    #         mode = arg
+    #     elif opt in ("-t", "--stext"):
+    #         message = arg
+    #     elif opt in ("-k", "--offset"):
+    #         key = int (arg)    
         
+    data = ''
+    with open("alice_in_wonderland.txt", 'r', encoding='utf-8') as my_file:
+            data = my_file.read()
+            
+    message = data
     # convert chars to lower case and call the crypto function
     message = message.lower()
+
+    key = 3
+    mode = 'encrypt'
+
     Enc_Dec (message, key, mode)
 
 
@@ -73,6 +82,9 @@ def Enc_Dec (message, key, mode):
 
     # Display the encrypted/decrypted string 
     print (translated)
+
+    with open("alice_in_wonderland_caesar_offset3.txt", 'w', encoding='utf-8') as my_file:
+            data = my_file.write(translated)
 
 if __name__ == "__main__":
     main (sys.argv[1:])

@@ -26,7 +26,7 @@ def command_line_menu():
 
     print(f"====================================")
     user_input = input("Enter filename of text file for letter frequency count: ")
-    text_file = read_text_file(user_input)
+    read_text_file(user_input)
     # text_file = read_text_file("alice_in_wonderland.txt")
     # text_file2 = read_text_file("moby_dick.txt")
 
