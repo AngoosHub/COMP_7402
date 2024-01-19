@@ -66,8 +66,6 @@ def read_text_file(filename):
     relative_distribution_dict = compute_frequency_count(sorted_dict)
 
     write_to_csv(sorted_dict, f"{filename}_freq")
-    write_to_csv(sorted_dict, f"{filename}_dist")
-    write_to_csv(relative_distribution_dict, f"{filename}_freq")
     write_to_csv(relative_distribution_dict, f"{filename}_dist")
 
 
