@@ -83,7 +83,7 @@ def Enc_Dec (message, key, mode):
     # Display the encrypted/decrypted string 
     print (translated)
 
-    with open("alice_in_wonderland_caesar_offset3.txt", 'w', encoding='utf-8') as my_file:
+    with open("alice_in_wonderland_caesar.txt", 'w', encoding='utf-8') as my_file:
             data = my_file.write(translated)
 
 if __name__ == "__main__":
