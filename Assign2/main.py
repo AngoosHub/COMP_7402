@@ -92,7 +92,7 @@ def compute_frequency_count(dict):
 
 
 def write_to_csv(mydict, filename):
-    with open(f'{filename}.csv', 'w', encoding='utf-8') as csv_file:
+    with open(f'{filename}.csv', 'w', encoding='utf-8', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in mydict.items():
             writer.writerow([key, value])
