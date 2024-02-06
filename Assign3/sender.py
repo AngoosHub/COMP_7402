@@ -21,7 +21,6 @@ import os, random, struct
 from Crypto.Cipher import AES
 from tinyec import registry
 import secrets
-import binascii
 from nummaster.basic import sqrtmod
 import tinyec.ec as ec
 from hashlib import sha256
@@ -82,7 +81,7 @@ def command_line_menu():
         user_input = input("Type number and press enter: ")
 
         if user_input == "1":
-            print("Start Sender.")
+            start_sender()
 
         elif user_input == "0":
             print("Exiting Program.")
@@ -93,7 +92,7 @@ def command_line_menu():
 
 
 def start_sender():
-    print("Starting Sender (Type \"exit\" to stop).")
+    print("Starting Sender Client (Type \"exit\" to stop).")
     configuration = read_configuration()
     address = configuration['receiver_address']
     port = configuration['receiver_port']
@@ -111,19 +110,40 @@ def start_sender():
     #         print("Invalid character detected. Must be ASCII supported values only.")
     #         continue
 
-    shared_key = ECDH_key_exchange(address, port)
+    shared_key = initiate_ECDH_key_exchange(address, port)
     print(f"Shared Key: {shared_key}")
 
 
-def ECDH_key_exchange(address, port):
+def initiate_ECDH_key_exchange(address, port):
+    curve = registry.get_curve('brainpoolP256r1')
+    print('Curve:', curve)
+    p = 76884956397045344220809746629001649093037950200943055203735601445031516197751
+    a = curve.a
+    b = curve.b
+
+    sender_private_key = secrets.randbelow(curve.field.n)
+    sender_public_key = curve.g * sender_private_key
+    sender_public_key_compressed = compress_key(sender_public_key)
+
+    print(f"\nSender private key: {hex(sender_private_key)}")
+    print(f"Sender public key:  {sender_public_key_compressed}")
+    print(f"Sender public key (Curve point): {sender_public_key}")
 
     # IPv4 Socket connection to receiver.
     with sock.socket(sock.AF_INET, sock.SOCK_STREAM) as my_sock:
         my_sock.setsockopt(sock.SOL_SOCKET, sock.SO_REUSEADDR, 1)
         my_sock.connect((address, port))
-        data = "hello!"
-        my_sock.sendall(data.encode("utf-8"))
+        my_sock.sendall(sender_public_key_compressed.encode("utf-8"))
+        data = my_sock.recv(1024).decode("utf-8")
         my_sock.close()
+
+    receiver_public_key = uncompress_key(data, p, a, b)
+    sender_shared_key = ec.Point(curve, receiver_public_key[0], receiver_public_key[1]) * sender_private_key
+
+    print(f"\nSender shared key:   {compress_key(sender_shared_key)}")
+    print(f"Sender shared key (Curve point): {sender_shared_key}")
+
+    return sender_shared_key
 
 
 def ECDH_encrypt():
@@ -246,11 +266,9 @@ def EncryptDecrypt():
 if __name__ == "__main__":
 
     # ECDH_encrypt()
-    ECDH_key_exchange(address, port)
-    exit()
+    # exit()
 
     try:
-        config = read_configuration()
         command_line_menu()
     except KeyboardInterrupt as e:
         print("Shutting Down.")

@@ -17,7 +17,7 @@ receiver.py
     to the command line.
 ----------------------------------------------------------------------------------------------------
 """
-
+from sender import *
 import socket as sock
 # from socket import *
 from _thread import *
@@ -107,9 +107,36 @@ def start_receiver():
                 data = conn.recv(1024).decode('utf8')
                 if data:
                     print(f"{conn.getpeername()}: \t{data}")
+                    receiver_public_key_compressed, receiver_shared_key = server_ECDH_exchange(data)
+                    conn.sendall(receiver_public_key_compressed.encode("utf8"))
                 else:
                     conn.close()
                     break
+
+
+def server_ECDH_exchange(sender_public_key_compressed):
+    curve = registry.get_curve('brainpoolP256r1')
+    print('Curve:', curve)
+    p = 76884956397045344220809746629001649093037950200943055203735601445031516197751
+    a = curve.a
+    b = curve.b
+
+    receiver_private_key = secrets.randbelow(curve.field.n)
+    receiver_public_key = curve.g * receiver_private_key
+    receiver_public_key_compressed = compress_key(receiver_public_key)
+
+    print(f"\nreceiver private key: {hex(receiver_private_key)}")
+    print(f"receiver public key:  {receiver_public_key_compressed}")
+    print(f"receiver public key point: {receiver_public_key}")
+
+    sender_public_key = uncompress_key(sender_public_key_compressed, p, a, b)
+    receiver_shared_key = ec.Point(curve, sender_public_key[0], sender_public_key[1]) * receiver_private_key
+
+    print(f"Receiver shared key: {compress_key(receiver_shared_key)}")
+
+    print(f"Receiver shared key (Curve point): {receiver_shared_key}")
+
+    return receiver_public_key_compressed, receiver_shared_key
 
 
 
