@@ -23,7 +23,7 @@ from tinyec import registry
 import secrets
 from nummaster.basic import sqrtmod
 import tinyec.ec as ec
-from hashlib import sha256, shake_128
+from hashlib import sha256, shake_256
 
 from _thread import *
 import socket as sock
@@ -105,8 +105,8 @@ def start_sender():
     while True:
         plaintext = 'fortuneofthesedaysthatonemaythinkwhatonelikesandsaywhatonethinks'
         user_input = input(f"\nEnter a 32-bytes long message to send or enter nothing for default plaintext."
-                           f"(Default: \"{plaintext}\")"
-                           f"UserInput: ")
+                           f"\n(Default: \"{plaintext}\")"
+                           f"\nUserInput: ")
         if len(user_input.encode('utf-8')) == 64:
             message = user_input
             break
@@ -176,17 +176,16 @@ def calculate_shared_key(private_key, compressed_key):
 
 def AES_encrypt(shared_key, shared_key_iv, message):
     aes_sha256_key = sha256(shared_key.encode("utf8")).hexdigest()
-    aes_sha256_iv = sha256(shared_key_iv.encode("utf8")).hexdigest()
+    aes_shake256_iv = shake_256(shared_key_iv.encode("utf8")).digest(16)
 
     print(f"\nAES Key (sha256 hashed shared secret): {aes_sha256_key}")
-    print(f"\nAES IV (sha256 hashed shared secret):  {aes_sha256_iv}")
+    print(f"\nAES IV (sha256 hashed shared secret):  {aes_shake256_iv.hex()}")
+
+    key = bytes.fromhex(aes_sha256_key)
+    IV = aes_shake256_iv
 
     # 32-byte Plaintext string
     plaintext = message
-
-    key = bytes.fromhex(aes_sha256_key)
-    IV = int(str(int(aes_sha256_iv, 16))[:32])
-    print(len(str(int(aes_sha256_iv, 16))[:32]))
 
     encryptor = AES.new(key, AES.MODE_CBC, IV)
 
@@ -202,14 +201,13 @@ def AES_encrypt(shared_key, shared_key_iv, message):
 
 def AES_decrypt(shared_key, shared_key_iv, cipher_text):
     aes_sha256_key = sha256(shared_key.encode("utf8")).hexdigest()
-    aes_sha256_iv = sha256(shared_key_iv.encode("utf8")).hexdigest()
+    aes_shake256_iv = shake_256(shared_key_iv.encode("utf8")).digest(16)
 
     print(f"\nAES Key (sha256 hashed shared secret): {aes_sha256_key}")
-    print(f"\nAES IV (sha256 hashed shared secret):  {aes_sha256_iv}")
+    print(f"\nAES IV (sha256 hashed shared secret):  {aes_shake256_iv.hex()}")
 
     key = bytes.fromhex(aes_sha256_key)
-    IV = int(str(int(aes_sha256_iv, 16))[:32])
-    print(len(str(int(aes_sha256_iv, 16))[:32]))
+    IV = aes_shake256_iv
 
     print("\nCipher text: ", cipher_text)
 
@@ -370,7 +368,6 @@ def EncryptDecrypt():
 
 
 if __name__ == "__main__":
-
     # ECDH_encrypt()
     # exit()
 
