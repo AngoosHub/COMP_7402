@@ -191,6 +191,7 @@ def AES_encrypt(shared_key, shared_key_iv, message):
 
     ciphertext = encryptor.encrypt(plaintext.encode("utf8"))
     print("\nCipher text: ", ciphertext)
+    print("\nCipher text: ", ciphertext.decode("utf8"))
 
     decryptor = AES.new(key, AES.MODE_CBC, IV)
     decrypted = decryptor.decrypt(ciphertext)

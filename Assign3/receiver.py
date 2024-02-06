@@ -140,7 +140,7 @@ def start_receiver():
                     conn.sendall(public_key_compressed.encode("utf8"))
 
                     # Decrypt cipher text
-                    cipher_text = conn.recv(1024).decode('utf8')
+                    cipher_text = conn.recv(1024) #.decode('utf8')
                     decrypted = AES_decrypt(shared_key_compressed, shared_key_iv_compressed, cipher_text)
 
 
