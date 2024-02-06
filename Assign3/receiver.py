@@ -107,20 +107,49 @@ def start_receiver():
                 data = conn.recv(1024).decode('utf8')
                 if data:
                     print(f"{conn.getpeername()}: \t{data}")
-                    receiver_public_key_compressed, receiver_shared_key = server_ECDH_exchange(data)
-                    conn.sendall(receiver_public_key_compressed.encode("utf8"))
+
+                    # Generate pub priv keys.
+                    private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
+                    print(f"\nReceiver private key: {hex(private_key)}")
+                    print(f"Receiver public key:  {public_key_compressed}")
+                    print(f"Receiver public key (Curve point): {public_key}")
+
+                    # Calculate shared key
+                    shared_key, shared_key_compressed = calculate_shared_key(private_key=private_key,
+                                                                             compressed_key=data)
+                    print(f"\nReceiver shared key:   {shared_key_compressed}")
+                    print(f"Receiver shared key (Curve point): {shared_key}")
+
+                    # Exchange public key
+                    conn.sendall(public_key_compressed.encode("utf8"))
+
+
+                    # Repeat for Initialization Vector
+                    data_iv = conn.recv(1024).decode('utf8')
+
+                    private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
+                    print(f"\nReceiver private key: {hex(private_key)}")
+                    print(f"Receiver public key:  {public_key_compressed}")
+                    print(f"Receiver public key (Curve point): {public_key}")
+
+                    shared_key_iv, shared_key_iv_compressed = calculate_shared_key(private_key=private_key,
+                                                                                   compressed_key=data_iv)
+                    print(f"\nReceiver shared key for IV:   {shared_key_iv_compressed}")
+                    print(f"Receiver shared key for IV (Curve point): {shared_key_iv}")
+
+                    conn.sendall(public_key_compressed.encode("utf8"))
+
+                    # Decrypt cipher text
+                    cipher_text = conn.recv(1024).decode('utf8')
+                    decrypted = AES_decrypt(shared_key_compressed, shared_key_iv_compressed, cipher_text)
+
+
                 else:
                     conn.close()
                     break
 
 
 def server_ECDH_exchange(sender_public_key_compressed):
-    curve = registry.get_curve('brainpoolP256r1')
-    print('Curve:', curve)
-    p = 76884956397045344220809746629001649093037950200943055203735601445031516197751
-    a = curve.a
-    b = curve.b
-
     receiver_private_key = secrets.randbelow(curve.field.n)
     receiver_public_key = curve.g * receiver_private_key
     receiver_public_key_compressed = compress_key(receiver_public_key)

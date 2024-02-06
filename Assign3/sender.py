@@ -23,13 +23,18 @@ from tinyec import registry
 import secrets
 from nummaster.basic import sqrtmod
 import tinyec.ec as ec
-from hashlib import sha256
+from hashlib import sha256, shake_128
 
 from _thread import *
 import socket as sock
 
 
 CONFIGURATION_PATH = "configuration.txt"
+curve = registry.get_curve('brainpoolP256r1')
+print('Curve:', curve)
+p = 76884956397045344220809746629001649093037950200943055203735601445031516197751
+a = curve.a
+b = curve.b
 
 
 def read_configuration():
@@ -92,58 +97,159 @@ def command_line_menu():
 
 
 def start_sender():
-    print("Starting Sender Client (Type \"exit\" to stop).")
+    print("Starting Sender Client.")
     configuration = read_configuration()
     address = configuration['receiver_address']
     port = configuration['receiver_port']
 
-    # keep_going = True
-    # while keep_going:
-    #     user_input = input("Type a message and press enter to send: ")
-    #     if user_input == "exit":
-    #         print("Closing connection with server.")
-    #         break
-    #
-    #     try:
-    #         encoded_input = user_input.encode("ascii").decode("ascii")
-    #     except UnicodeEncodeError or UnicodeDecodeError:
-    #         print("Invalid character detected. Must be ASCII supported values only.")
-    #         continue
-
-    shared_key = initiate_ECDH_key_exchange(address, port)
-    print(f"Shared Key: {shared_key}")
-
-
-def initiate_ECDH_key_exchange(address, port):
-    curve = registry.get_curve('brainpoolP256r1')
-    print('Curve:', curve)
-    p = 76884956397045344220809746629001649093037950200943055203735601445031516197751
-    a = curve.a
-    b = curve.b
-
-    sender_private_key = secrets.randbelow(curve.field.n)
-    sender_public_key = curve.g * sender_private_key
-    sender_public_key_compressed = compress_key(sender_public_key)
-
-    print(f"\nSender private key: {hex(sender_private_key)}")
-    print(f"Sender public key:  {sender_public_key_compressed}")
-    print(f"Sender public key (Curve point): {sender_public_key}")
+    while True:
+        plaintext = 'fortuneofthesedaysthatonemaythinkwhatonelikesandsaywhatonethinks'
+        user_input = input(f"\nEnter a 32-bytes long message to send or enter nothing for default plaintext."
+                           f"(Default: \"{plaintext}\")"
+                           f"UserInput: ")
+        if len(user_input.encode('utf-8')) == 64:
+            message = user_input
+            break
+        elif len(user_input.encode('utf-8')) > 0 and not len(user_input) == 64:
+            print(f"Invalid input, message was not 32-bytes.")
+        else:
+            message = plaintext
+            break
 
     # IPv4 Socket connection to receiver.
     with sock.socket(sock.AF_INET, sock.SOCK_STREAM) as my_sock:
         my_sock.setsockopt(sock.SOL_SOCKET, sock.SO_REUSEADDR, 1)
         my_sock.connect((address, port))
-        my_sock.sendall(sender_public_key_compressed.encode("utf-8"))
+
+        # Generate pub priv keys.
+        private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
+        print(f"\nSender private key: {hex(private_key)}")
+        print(f"Sender public key:  {public_key_compressed}")
+        print(f"Sender public key (Curve point): {public_key}")
+
+        # Exchange public keys
+        my_sock.sendall(public_key_compressed.encode("utf-8"))
         data = my_sock.recv(1024).decode("utf-8")
+
+        # Calculate shared key
+        shared_key, shared_key_compressed = calculate_shared_key(private_key=private_key, compressed_key=data)
+        print(f"\nSender shared key:   {shared_key_compressed}")
+        print(f"Sender shared key (Curve point): {shared_key}")
+
+
+        # Repeat for Initalization Vector
+        private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
+        print(f"\nSender private key: {hex(private_key)}")
+        print(f"Sender public key:  {public_key_compressed}")
+        print(f"Sender public key (Curve point): {public_key}")
+
+        # Exchange public keys
+        my_sock.sendall(public_key_compressed.encode("utf-8"))
+        data_iv = my_sock.recv(1024).decode("utf-8")
+
+        # Calculate shared key
+        shared_key_iv, shared_key_iv_compressed = calculate_shared_key(private_key=private_key, compressed_key=data_iv)
+        print(f"\nSender shared key for IV:   {shared_key_iv_compressed}")
+        print(f"Sender shared key for IV (Curve point): {shared_key_iv}")
+
+        cipher_text = AES_encrypt(shared_key_compressed, shared_key_iv_compressed, message)
+        my_sock.sendall(cipher_text)
+
         my_sock.close()
 
-    receiver_public_key = uncompress_key(data, p, a, b)
-    sender_shared_key = ec.Point(curve, receiver_public_key[0], receiver_public_key[1]) * sender_private_key
 
-    print(f"\nSender shared key:   {compress_key(sender_shared_key)}")
-    print(f"Sender shared key (Curve point): {sender_shared_key}")
+def generate_ECDH_pub_priv_keys():
+    private_key = secrets.randbelow(curve.field.n)
+    public_key = curve.g * private_key
+    public_key_compressed = compress_key(public_key)
 
-    return sender_shared_key
+    return private_key, public_key, public_key_compressed
+
+
+def calculate_shared_key(private_key, compressed_key):
+    public_key = uncompress_key(compressed_key, p, a, b)
+    shared_key = ec.Point(curve, public_key[0], public_key[1]) * private_key
+    shared_key_compressed = compress_key(shared_key)
+
+    return shared_key, shared_key_compressed
+
+
+def AES_encrypt(shared_key, shared_key_iv, message):
+    aes_sha256_key = sha256(shared_key.encode("utf8")).hexdigest()
+    aes_sha256_iv = sha256(shared_key_iv.encode("utf8")).hexdigest()
+
+    print(f"\nAES Key (sha256 hashed shared secret): {aes_sha256_key}")
+    print(f"\nAES IV (sha256 hashed shared secret):  {aes_sha256_iv}")
+
+    # 32-byte Plaintext string
+    plaintext = message
+
+    key = bytes.fromhex(aes_sha256_key)
+    IV = int(str(int(aes_sha256_iv, 16))[:32])
+    print(len(str(int(aes_sha256_iv, 16))[:32]))
+
+    encryptor = AES.new(key, AES.MODE_CBC, IV)
+
+    ciphertext = encryptor.encrypt(plaintext.encode("utf8"))
+    print("\nCipher text: ", ciphertext)
+
+    decryptor = AES.new(key, AES.MODE_CBC, IV)
+    decrypted = decryptor.decrypt(ciphertext)
+    print("\nDecrypt text: ", decrypted.decode("utf8"))
+
+    return ciphertext
+
+
+def AES_decrypt(shared_key, shared_key_iv, cipher_text):
+    aes_sha256_key = sha256(shared_key.encode("utf8")).hexdigest()
+    aes_sha256_iv = sha256(shared_key_iv.encode("utf8")).hexdigest()
+
+    print(f"\nAES Key (sha256 hashed shared secret): {aes_sha256_key}")
+    print(f"\nAES IV (sha256 hashed shared secret):  {aes_sha256_iv}")
+
+    key = bytes.fromhex(aes_sha256_key)
+    IV = int(str(int(aes_sha256_iv, 16))[:32])
+    print(len(str(int(aes_sha256_iv, 16))[:32]))
+
+    print("\nCipher text: ", cipher_text)
+
+    decryptor = AES.new(key, AES.MODE_CBC, IV)
+    decrypted = decryptor.decrypt(cipher_text)
+    print("\nDecrypt text: ", decrypted.decode("utf8"))
+
+    return decrypted
+
+
+# def initiate_ECDH_key_exchange(address, port):
+#     curve = registry.get_curve('brainpoolP256r1')
+#     print('Curve:', curve)
+#     p = 76884956397045344220809746629001649093037950200943055203735601445031516197751
+#     a = curve.a
+#     b = curve.b
+#
+#     sender_private_key = secrets.randbelow(curve.field.n)
+#     sender_public_key = curve.g * sender_private_key
+#     sender_public_key_compressed = compress_key(sender_public_key)
+#
+#     print(f"\nSender private key: {hex(sender_private_key)}")
+#     print(f"Sender public key:  {sender_public_key_compressed}")
+#     print(f"Sender public key (Curve point): {sender_public_key}")
+#
+#     # IPv4 Socket connection to receiver.
+#     with sock.socket(sock.AF_INET, sock.SOCK_STREAM) as my_sock:
+#         my_sock.setsockopt(sock.SOL_SOCKET, sock.SO_REUSEADDR, 1)
+#         my_sock.connect((address, port))
+#         my_sock.sendall(sender_public_key_compressed.encode("utf-8"))
+#         data = my_sock.recv(1024).decode("utf-8")
+#         my_sock.close()
+#
+#     receiver_public_key = uncompress_key(data, p, a, b)
+#     sender_shared_key = ec.Point(curve, receiver_public_key[0], receiver_public_key[1]) * sender_private_key
+#
+#     print(f"\nSender shared key:   {compress_key(sender_shared_key)}")
+#     print(f"Sender shared key (Curve point): {sender_shared_key}")
+#
+#     return sender_shared_key
 
 
 def ECDH_encrypt():
