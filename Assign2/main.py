@@ -27,8 +27,8 @@ def command_line_menu():
     print(f"====================================")
     user_input = input("Enter filename of text file for letter frequency count: ")
     read_text_file(user_input)
-    # text_file = read_text_file("alice_in_wonderland.txt")
-    # text_file2 = read_text_file("moby_dick.txt")
+    # read_text_file("alice_in_wonderland.txt")
+    # read_text_file("moby_dick.txt")
 
 
 def read_text_file(filename):
@@ -69,6 +69,10 @@ def read_text_file(filename):
     write_to_csv(relative_distribution_dict, f"{filename}_dist")
 
 
+    sorted_dict_alphabet = dict(sorted(letter_freq.items(), key=lambda item: item[0]))
+    write_to_csv(sorted_dict_alphabet, f"{filename}_alphabet")
+
+
 def compute_frequency_count(dict):
     total_count = 0
     for key, value in dict.items():
@@ -82,17 +86,16 @@ def compute_frequency_count(dict):
         relative_distribution_dict[key] = relative_dist
         probability_sum += relative_dist
 
-    probability_sum = round(probability_sum, 10)
     print("\nRelative Distribution of Letters:")
     for key, value in relative_distribution_dict.items():
         print(f"{key}: {round(value * 100, 4)} %")
-    print(f"\nSum of Probabilities: {probability_sum}")
+    print(f"\nSum of Probabilities: {round(probability_sum, 10)}")
 
     return relative_distribution_dict
 
 
 def write_to_csv(mydict, filename):
-    with open(f'{filename}.csv', 'w', encoding='utf-8') as csv_file:
+    with open(f'{filename}.csv', 'w', encoding='utf-8', newline='\n') as csv_file:
         writer = csv.writer(csv_file)
         for key, value in mydict.items():
             writer.writerow([key, value])
