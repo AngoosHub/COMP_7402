@@ -21,6 +21,7 @@ from sender import *
 import socket as sock
 # from socket import *
 from _thread import *
+from encryption import *
 
 
 LOG_PATH = "log.txt"
@@ -149,23 +150,23 @@ def start_receiver():
                     break
 
 
-def server_ECDH_exchange(sender_public_key_compressed):
-    receiver_private_key = secrets.randbelow(curve.field.n)
-    receiver_public_key = curve.g * receiver_private_key
-    receiver_public_key_compressed = compress_key(receiver_public_key)
-
-    print(f"\nreceiver private key: {hex(receiver_private_key)}")
-    print(f"receiver public key:  {receiver_public_key_compressed}")
-    print(f"receiver public key point: {receiver_public_key}")
-
-    sender_public_key = uncompress_key(sender_public_key_compressed, p, a, b)
-    receiver_shared_key = ec.Point(curve, sender_public_key[0], sender_public_key[1]) * receiver_private_key
-
-    print(f"Receiver shared key: {compress_key(receiver_shared_key)}")
-
-    print(f"Receiver shared key (Curve point): {receiver_shared_key}")
-
-    return receiver_public_key_compressed, receiver_shared_key
+# def server_ECDH_exchange(sender_public_key_compressed):
+#     receiver_private_key = secrets.randbelow(curve.field.n)
+#     receiver_public_key = curve.g * receiver_private_key
+#     receiver_public_key_compressed = compress_key(receiver_public_key)
+#
+#     print(f"\nreceiver private key: {hex(receiver_private_key)}")
+#     print(f"receiver public key:  {receiver_public_key_compressed}")
+#     print(f"receiver public key point: {receiver_public_key}")
+#
+#     sender_public_key = uncompress_key(sender_public_key_compressed, p, a, b)
+#     receiver_shared_key = ec.Point(curve, sender_public_key[0], sender_public_key[1]) * receiver_private_key
+#
+#     print(f"Receiver shared key: {compress_key(receiver_shared_key)}")
+#
+#     print(f"Receiver shared key (Curve point): {receiver_shared_key}")
+#
+#     return receiver_public_key_compressed, receiver_shared_key
 
 
 
