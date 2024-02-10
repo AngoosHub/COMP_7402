@@ -113,13 +113,13 @@ def start_receiver():
                     private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
                     print(f"\nReceiver private key: {hex(private_key)}")
                     print(f"Receiver public key:  {public_key_compressed}")
-                    print(f"Receiver public key (Curve point): {public_key}")
+                    # print(f"Receiver public key (Curve point): {public_key}")
 
                     # Calculate shared key
                     shared_key, shared_key_compressed = calculate_shared_key(private_key=private_key,
                                                                              compressed_key=data)
                     print(f"\nReceiver shared key:   {shared_key_compressed}")
-                    print(f"Receiver shared key (Curve point): {shared_key}")
+                    # print(f"Receiver shared key (Curve point): {shared_key}")
 
                     # Exchange public key
                     conn.sendall(public_key_compressed.encode("utf8"))
@@ -131,12 +131,12 @@ def start_receiver():
                     private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
                     print(f"\nReceiver private key: {hex(private_key)}")
                     print(f"Receiver public key:  {public_key_compressed}")
-                    print(f"Receiver public key (Curve point): {public_key}")
+                    # print(f"Receiver public key (Curve point): {public_key}")
 
                     shared_key_iv, shared_key_iv_compressed = calculate_shared_key(private_key=private_key,
                                                                                    compressed_key=data_iv)
                     print(f"\nReceiver shared key for IV:   {shared_key_iv_compressed}")
-                    print(f"Receiver shared key for IV (Curve point): {shared_key_iv}")
+                    # print(f"Receiver shared key for IV (Curve point): {shared_key_iv}")
 
                     conn.sendall(public_key_compressed.encode("utf8"))
 
