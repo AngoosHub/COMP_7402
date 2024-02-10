@@ -114,7 +114,7 @@ def start_sender():
         private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
         print(f"\nSender private key: {hex(private_key)}")
         print(f"Sender public key:  {public_key_compressed}")
-        print(f"Sender public key (Curve point): {public_key}")
+        # print(f"Sender public key (Curve point): {public_key}")
 
         # Exchange public keys
         my_sock.sendall(public_key_compressed.encode("utf-8"))
@@ -123,14 +123,14 @@ def start_sender():
         # Calculate shared key
         shared_key, shared_key_compressed = calculate_shared_key(private_key=private_key, compressed_key=data)
         print(f"\nSender shared key:   {shared_key_compressed}")
-        print(f"Sender shared key (Curve point): {shared_key}")
+        # print(f"Sender shared key (Curve point): {shared_key}")
 
 
         # Repeat for Initalization Vector
         private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
         print(f"\nSender private key: {hex(private_key)}")
         print(f"Sender public key:  {public_key_compressed}")
-        print(f"Sender public key (Curve point): {public_key}")
+        # print(f"Sender public key (Curve point): {public_key}")
 
         # Exchange public keys
         my_sock.sendall(public_key_compressed.encode("utf-8"))
@@ -139,7 +139,7 @@ def start_sender():
         # Calculate shared key
         shared_key_iv, shared_key_iv_compressed = calculate_shared_key(private_key=private_key, compressed_key=data_iv)
         print(f"\nSender shared key for IV:   {shared_key_iv_compressed}")
-        print(f"Sender shared key for IV (Curve point): {shared_key_iv}")
+        # print(f"Sender shared key for IV (Curve point): {shared_key_iv}")
 
         cipher_text = AES_encrypt(shared_key_compressed, shared_key_iv_compressed, message)
         my_sock.sendall(cipher_text)
