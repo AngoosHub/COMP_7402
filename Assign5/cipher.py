@@ -22,6 +22,8 @@ import sys
 from lookup_tables import *
 # from secrets import token_bytes
 import csv
+from PIL import Image
+import math
 
 
 DEFAULT_SUBKEYS_PATH = "default_subkeys.txt"
@@ -31,7 +33,7 @@ BLOCK_SIZE = 16
 TOTAL_ROUNDS = 16
 BYTEORDER = "big"
 IV = bytes.fromhex("ef05858fe66faa7f273b5eaad1080bf9")  # 16 byte iv
-RECORD_AVALANCHE = True
+RECORD_AVALANCHE = False
 
 def parse_args():
     """
@@ -50,6 +52,10 @@ def parse_args():
     # Will use subkey generation it no keys options specified.
     parser.add_argument('-s', '--subkeys_default', action='store_true', help='Use default (hardcoded) subkeys for each round.')
     parser.add_argument('-k', '--keysfile', help='Specify subkeys file to use for each round. (Overrides other key options)')
+
+    parser.add_argument('-g', '--genkey',
+                        help='Provide a 128-bit hexadecimal key to use for keygen. (Uses Default key if empty)')
+
 
     # Read the Input and output filenames.
     parser.add_argument("-i", "--inputfile", help="Provide Input filename.")
@@ -72,65 +78,51 @@ def start_cipher():
 
     global RECORD_AVALANCHE
 
-    # args = parse_args()
-    #
-    # if not args.encrypt and args.decrypt:
-    #     is_encrypt = False
-    # else:
-    #     is_encrypt = True
-    #
-    # if args.inputfile is None and is_encrypt:
-    #     print(f"====================================\n")
-    #     input_text = input("Enter plaintext to encrypt: ")
-    # elif args.inputfile is None and not is_encrypt:
-    #     print(f"====================================\n")
-    #     input_text = input("Enter ciphertext to decrypt: ")
-    # else:
-    #     with open(args.inputfile, "rb") as input_file:
-    #         input_text = input_file.read()
-    #
-    # if args.keysfile:
-    #     try:
-    #         with open(args.keysfile, "r") as key_file:
-    #             subkeys_str = key_file.read()
-    #             subkeys = [int(x.strip(), 16) for x in subkeys_str.split(',')]
-    #
-    #             for k in subkeys:
-    #                 print(hex(k))
-    #     except FileNotFoundError:
-    #         print("Error: key file was not found.")
-    #
-    # elif args.subkeys_default:
-    #     with open("default_subkeys.txt", "r") as key_file:
-    #         subkeys_str = key_file.read()
-    #         subkeys = [int(x.strip(), 16) for x in subkeys_str.split(',')]
-    #
-    #         for k in subkeys:
-    #             print(hex(k))
-    # else:
-    #     print("implement this later")
-    #     subkeys = generate_subkeys()
-    #
-    ###### handle the args.outputfile later or when outputing to terminal.
+    args = parse_args()
 
-    subkeys = read_subkeys_file(DEFAULT_SUBKEYS_PATH)
-    print(subkeys)
+    if not args.encrypt and args.decrypt:
+        is_encrypt = False
+    else:
+        is_encrypt = True
 
-    # input_blocks = split_byte_data_to_blocks(input_text, BLOCK_SIZE)
-    #
-    # for data in input_blocks:
-    #     print(data)
+    if args.inputfile is None and is_encrypt:
+        print(f"====================================\n")
+        input_text = input("Enter plaintext to encrypt: ")
+    elif args.inputfile is None and not is_encrypt:
+        print(f"====================================\n")
+        input_text = input("Enter ciphertext (hexstring) to decrypt: ")
+    else:
+        with open(args.inputfile, "rb") as input_file:
+            input_text = input_file.read()
 
-    # # XOR two bytes, and than XOR again to undo it.
-    # temp = xor_bitwise(input_text, subkeys[0])
-    # print(temp)
-    # temp2 = xor_bitwise(temp, subkeys[0])
-    # print(temp2)
+    if args.keysfile:
+        try:
+            round_key_list = read_subkeys_file(args.keysfile)
+        except FileNotFoundError:
+            print("Error: key file was not found.")
+        print("==== Loaded Subkeys ====")
+        for x in range(len(round_key_list)):
+            print(f"Round Key {x}: {round_key_list[x].hex()}")
+    elif args.subkeys_default:
+        round_key_list = read_subkeys_file(DEFAULT_SUBKEYS_PATH)
+        print("==== Default Subkeys ====")
+        for x in range(len(round_key_list)):
+            print(f"Round Key {x}: {round_key_list[x].hex()}")
+    else:
+        if args.genkey is not None and len(args.genkey) > 0:
+            # key = bytes.fromhex(args.genkey)
+            key = int(args.genkey, 16)
+            round_key_list = subkey_generation(key)
+        else:
+            key = 0x000102030405060708090a0b0c0d0e0f
+            round_key_list = subkey_generation(key)
+
+
 
     # print(token_bytes(16))
 
     # control
-    key = 0x000102030405060708090a0b0c0d0e0f
+    # key = 0x000102030405060708090a0b0c0d0e0f
     # 1 bit diff
     # key = 0x100102030405060708090a0b0c0d0e0f
     # 2 bit diff
@@ -138,42 +130,93 @@ def start_cipher():
     # 3 bit diff
     # key = 0x111102030405060708090a0b0c0d0e0f
     # 4 bit diff
-    # key = 0x110202030405060708090a0b0c0d0e0f
+    # key = 0x101002130405060708090a0b0c0d0e0f
+    # 6 bit diff
+    # key = 0x10000213a405061708090a0b0c0d0e0f
+    # 7 bit diff
+    # key = 0x10100213a405061708090a0b0c0d0e0f
+    # 10 bit diff
+    # key = 0x10100213a405e61708090a0b0c0d0e0f
 
-    try:
-        key_bytes = int.to_bytes(key, BLOCK_SIZE, BYTEORDER)
-    except OverflowError:
-        print("Key too big. Key must be 128-bits")
-
-    round_key_list = subkey_generation(key)
+    # try:
+    #     key_bytes = int.to_bytes(key, BLOCK_SIZE, BYTEORDER)
+    # except OverflowError:
+    #     print("Key too big. Key must be 128-bits")
 
     # control
-    input_text = "abcdefghijklmno".encode("utf-8")
+    # input_text = "abcdefghijklmno".encode("utf-8")
     # 1 bit diff
-    input_text2 = "Abcdefghijklmno".encode("utf-8")
+    # input_text = "Abcdefghijklmno".encode("utf-8")
     # 2 bit diff
-    input_text3 = "ABcdefghijklmno".encode("utf-8")
+    # input_text = "bbcdefghijklmno".encode("utf-8")
     # 3 bit diff
-    input_text4 = "ABCdefghijklmno".encode("utf-8")
+    # input_text = "bBcdefghijklmno".encode("utf-8")
     # 4 bit diff
-    input_text5 = "ABCDefghijklmno".encode("utf-8")
+    # input_text = "bcccefghijklmno".encode("utf-8")
+    # 6-bit diff
+    # input_text = "abddegFhijklmnop".encode("utf-8")
 
     data = input_text
-    data_padded = pad_block(data)
+    # data_padded = pad_block(data)
 
-    ciphertext = ecb_encrypt(data, round_key_list)
-    print(ciphertext.decode('utf-8', 'replace'))
+    if args.mode.lower() != "ecb" and args.mode.lower() != "cbc":
+        print("Invalid mode, only ECB and CBC supported.")
+        return
 
-    plaintext = ecb_decrypt(ciphertext, round_key_list)
-    print(plaintext.decode('utf-8', 'replace'))
+    if args.mode.lower() == "ecb":
+        if is_encrypt:
+            output_text = ecb_encrypt(data, round_key_list)
+            print("Encrypted CipherText Decode: ", output_text.decode('utf-8', 'replace'))
+            if args.outputfile:
+                with open(args.outputfile, "wb") as f:
+                    f.write(output_text)
+                if args.outputfile.endswith(".bmp"):
+                    # calculate sizes
+                    num_bytes = len(output_text)
+                    num_pixels = int((num_bytes + 2) / 3)  # 3 bytes per pixel
+                    W = H = int(math.ceil(num_pixels ** 0.5))  # W=H, such that everything fits in
+
+                    # fill the image with zeros, because probably len(imagedata) < needed W*H*3
+                    imagedata = output_text + '\0' * (W * H * 3 - len(output_text))
+
+                    image = Image.fromstring('RGB', (W, H), imagedata)  # create image
+                    image.save(f'header_{args.outputfile}')  # save to a file
+        else:
+            output_text = ecb_decrypt(data, round_key_list)
+            print("Decrypted PlainText Decode: ", output_text.decode('utf-8', 'replace'))
+            if args.outputfile:
+                with open(args.outputfile, "w") as f:
+                    f.write(output_text.decode('utf-8', 'replace'))
+
+    elif args.mode.lower() == "cbc":
+        if is_encrypt:
+            output_text = cbc_encrypt(data, round_key_list, IV)
+            print("Encrypted CipherText Decode: ", output_text.decode('utf-8', 'replace'))
+            if args.outputfile:
+                with open(args.outputfile, "wb") as f:
+                    f.write(output_text)
+        else:
+            output_text = cbc_decrypt(data, round_key_list, IV)
+            print("Decrypted PlainText Decode: ", output_text.decode('utf-8', 'replace'))
+            if args.outputfile:
+                with open(args.outputfile, "w") as f:
+                    f.write(output_text.decode('utf-8', 'replace'))
+
+
+
+    # ciphertext = ecb_encrypt(data, round_key_list)
+    # print("Encrypted CipherText Decode: ", ciphertext.decode('utf-8', 'replace'))
+
+    # plaintext = ecb_decrypt(ciphertext, round_key_list)
+    # print("Decrypted PlainText Decode: ", plaintext.decode('utf-8', 'replace'))
 
     # size, difference = avalanche_bit_compare(data_padded, ciphertext)
 
-    ciphertext = cbc_encrypt(data, round_key_list, IV)
-    print(ciphertext.decode('utf-8', 'replace'))
+    # ciphertext = cbc_encrypt(data, round_key_list, IV)
+    # print("Encrypted CipherText Decode: ", ciphertext.decode('utf-8', 'replace'))
 
-    plaintext = cbc_decrypt(ciphertext, round_key_list, IV)
-    print(plaintext.decode('utf-8', 'replace'))
+    # plaintext = cbc_decrypt(ciphertext, round_key_list, IV)
+    # print("Decrypted PlainText Decode: ", plaintext.decode('utf-8', 'replace'))
 
     # size, difference = avalanche_bit_compare(data_padded, ciphertext)
 
@@ -269,10 +312,6 @@ def avalanche_bit_compare(a, b):
 
 
 
-def image_test():
-    print("Starting image test.")
-
-
 def ecb_encrypt(data, round_key_list):
     # pad last block to block size.
     data_pad = pad_block(data)
@@ -282,22 +321,26 @@ def ecb_encrypt(data, round_key_list):
     avalanche_data_list = []
     control_list = []
     if RECORD_AVALANCHE:
-        with open('avalanche_record.csv', 'r') as file:
+        with open('avalanche_control.csv', 'r') as file:
             file.readline()
             # Split columns while reading
             for a, b, c in csv.reader(file, delimiter=','):
                 # Append each variable to a separate list
                 control_list.append(c)
 
-    print(control_list)
+    # print(control_list)
+    print("\n")
 
     for n in range(len(data_block_list)):
         data_block = data_block_list[n]
         last_data_block = data_block
+        print(f"====Data Block {n + 1}====\n"
+              f"Data Block = {data_block.hex()}")
 
         for i in range(len(round_key_list)):
             data_block_temp = round_function(last_data_block, round_key_list[i])
             last_data_block = data_block_temp
+            print(f"Round {i+1} - Block = {last_data_block.hex()}")
 
             if RECORD_AVALANCHE and n == 0 and i == 0:
                 size, difference = avalanche_bit_compare(int(control_list[i], 16).to_bytes(BLOCK_SIZE, BYTEORDER), data_block)
@@ -315,6 +358,8 @@ def ecb_encrypt(data, round_key_list):
         cipher_block = right_block + left_block
         # print(cipher_block)
         cipher_block_list.append(cipher_block)
+        print(f"CipherText = {cipher_block.hex()}")
+        print("\n")
 
     if RECORD_AVALANCHE:
         with open('avalanche_record.csv', 'w') as out:
@@ -337,10 +382,13 @@ def ecb_decrypt(data, round_key_list):
     for n in range(len(data_block_list)):
         data_block = data_block_list[n]
         last_data_block = data_block
+        print(f"====Data Block {n + 1}====\n"
+              f"Data Block = {data_block.hex()}")
 
         for i in range(len(keys_reverse)):
             data_block_temp = round_function(last_data_block, keys_reverse[i])
             last_data_block = data_block_temp
+            print(f"Round {i + 1} - Block = {last_data_block.hex()}")
 
         # swap left and right halves after final round
         left_block = last_data_block[:len(last_data_block) // 2]
@@ -348,6 +396,9 @@ def ecb_decrypt(data, round_key_list):
         plaintext_block = right_block + left_block
         # print(plaintext_block)
         plaintext_block_list.append(plaintext_block)
+        print(f"CipherText = {plaintext_block.hex()}")
+        print("\n")
+
 
     # unpad last block
     plaintext_block_list[-1] = unpad_block(plaintext_block_list[-1])
@@ -358,16 +409,20 @@ def cbc_encrypt(data, round_key_list, iv):
     # pad last block to block size.
     data_pad = pad_block(data)
     data_block_list = split_byte_data_to_blocks(data_pad, BLOCK_SIZE)
+    print("\n")
 
     cipher_block_list = []
     for n in range(len(data_block_list)):
         data_block = data_block_list[n]
         # XOR initialization vector with data block
         last_data_block = xor_bitwise(data_block, iv)
+        print(f"====Data Block {n + 1}====\n"
+              f"Data Block = {data_block.hex()}")
 
         for i in range(len(round_key_list)):
             data_block_temp = round_function(last_data_block, round_key_list[i])
             last_data_block = data_block_temp
+            print(f"Round {i + 1} - Block = {last_data_block.hex()}")
 
         # swap left and right halves after final round
         left_block = last_data_block[:len(last_data_block) // 2]
@@ -376,6 +431,8 @@ def cbc_encrypt(data, round_key_list, iv):
         cipher_block_list.append(cipher_block)
         # set iv as current block for next block
         iv = cipher_block
+        print(f"CipherText = {cipher_block.hex()}")
+        print("\n")
 
     return b''.join(cipher_block_list)
 
@@ -389,10 +446,13 @@ def cbc_decrypt(data, round_key_list, iv):
     for n in range(len(data_block_list)):
         data_block = data_block_list[n]
         last_data_block = data_block
+        print(f"====Data Block {n + 1}====\n"
+              f"Data Block = {data_block.hex()}")
 
         for i in range(len(keys_reverse)):
             data_block_temp = round_function(last_data_block, keys_reverse[i])
             last_data_block = data_block_temp
+            print(f"Round {i + 1} - Block = {last_data_block.hex()}")
 
         # swap left and right halves after final round
         left_block = last_data_block[:len(last_data_block) // 2]
@@ -403,6 +463,8 @@ def cbc_decrypt(data, round_key_list, iv):
         plaintext_block = xor_bitwise(plaintext_block_iv, iv)
 
         plaintext_block_list.append(plaintext_block)
+        print(f"CipherText = {plaintext_block.hex()}")
+        print("\n")
         # set iv as last cipher block for next block
         iv = data_block
 
@@ -534,7 +596,7 @@ def subkey_generation(key):
         round_key_list.append(new_subkey)
 
         print(f"\n===Subkey Round {i}===")
-        print("Word4: ", last_word_4)
+        print("LastWord: ", last_word_4)
         print("After Rot_word: ", word_r)
         print("After Sub_word_mod: ", word_rs)
         print("After Rcon_word_mod: ", word_rsr)
@@ -597,9 +659,14 @@ def XOR_two_words(word_a, word_b):
     # print(word_c)
     return word_c
 
-
+def image_test():
+    print("Starting image test.")
 
 if __name__ == "__main__":
+
+    # bmp = open("black_white.bmp", 'rb')
+
+
     # key = 0x000102030405060708090a0b0c0d0e0f
     # key_str = f'{key:032x}'
     #
@@ -611,20 +678,38 @@ if __name__ == "__main__":
     # key3_str = f'{key3:032x}'
     # # 3 bit diff
     # key4 = 0x111102030405060708090a0b0c0d0e0f
-    # key4_str = f'{key3:032x}'
+    # key4_str = f'{key4:032x}'
     # # 4 bit diff
-    # key5 = 0x110202030405060708090a0b0c0d0e0f
+    # key5 = 0x101002130405060708090a0b0c0d0e0f
     # key5_str = f'{key5:032x}'
+    # # 7 bit diff
+    # key7 = 0x10100213a405061708090a0b0c0d0e0f
+    # key7_str = f'{key7:032x}'
     #
-    # avalanche_bit_compare(key.to_bytes(BLOCK_SIZE, BYTEORDER), key5.to_bytes(BLOCK_SIZE, BYTEORDER))
+    # # 10 bit diff
+    # key6 = 0x10100213a405e61708090a0b0c0d0e0f
+    # key6_str = f'{key6:032x}'
+    #
+    # # 6 bit diff
+    # key8 = 0x10000213a405061708090a0b0c0d0e0f
+    # key8_str = f'{key8:032x}'
+    #
+    # key9 = 0x00010213a405061708090a0b0c0d0e0f
+    # key9_str = f'{key9:032x}'
+    #
+    # avalanche_bit_compare(key.to_bytes(BLOCK_SIZE, BYTEORDER), key9.to_bytes(BLOCK_SIZE, BYTEORDER))
+    # exit()
 
     # input_text = "abcdefghijklmno".encode("utf-8")
     # input_text2 = "Abcdefghijklmno".encode("utf-8")
-    # input_text3 = "ABcdefghijklmno".encode("utf-8")
-    # input_text4 = "ABCdefghijklmno".encode("utf-8")
-    # input_text5 = "ABCDefghijklmno".encode("utf-8")
+    # input_text3 = "bbcdefghijklmno".encode("utf-8")
+    # input_text4 = "bBcdefghijklmno".encode("utf-8")
+    # input_text5 = "abDdefghijklmno".encode("utf-8")
+    # # 6 bit
+    # input_text6 = "abddegFhijklmno".encode("utf-8")
     #
-    # avalanche_bit_compare(input_text, input_text5)
+    # avalanche_bit_compare(input_text, input_text6)
+    # exit()
 
     try:
         start_cipher()
