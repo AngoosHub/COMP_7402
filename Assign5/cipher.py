@@ -21,6 +21,7 @@ from argparse import ArgumentParser
 import sys
 from lookup_tables import *
 # from secrets import token_bytes
+import csv
 
 
 DEFAULT_SUBKEYS_PATH = "default_subkeys.txt"
@@ -30,6 +31,7 @@ BLOCK_SIZE = 16
 TOTAL_ROUNDS = 16
 BYTEORDER = "big"
 IV = bytes.fromhex("ef05858fe66faa7f273b5eaad1080bf9")  # 16 byte iv
+RECORD_AVALANCHE = True
 
 def parse_args():
     """
@@ -53,6 +55,10 @@ def parse_args():
     parser.add_argument("-i", "--inputfile", help="Provide Input filename.")
     parser.add_argument("-o", "--outputfile", help="Provide Output filename.")
 
+    # # Read the Input and output filenames.
+    # parser.add_argument('-a', '--avalanche', action='store_true',
+    #                     help='Saves avalanche results to aa file.')
+
     args = parser.parse_args()
 
     return args
@@ -63,6 +69,8 @@ def start_cipher():
     Reads the user arguments and starts the feistel cipher.
     :return: None
     """
+
+    global RECORD_AVALANCHE
 
     # args = parse_args()
     #
@@ -121,28 +129,54 @@ def start_cipher():
 
     # print(token_bytes(16))
 
+    # control
     key = 0x000102030405060708090a0b0c0d0e0f
+    # 1 bit diff
+    # key = 0x100102030405060708090a0b0c0d0e0f
+    # 2 bit diff
+    # key = 0x110102030405060708090a0b0c0d0e0f
+    # 3 bit diff
+    # key = 0x111102030405060708090a0b0c0d0e0f
+    # 4 bit diff
+    # key = 0x110202030405060708090a0b0c0d0e0f
+
+    try:
+        key_bytes = int.to_bytes(key, BLOCK_SIZE, BYTEORDER)
+    except OverflowError:
+        print("Key too big. Key must be 128-bits")
+
     round_key_list = subkey_generation(key)
 
-    # input_text = "good".encode("utf8")
-    input_text = "goodgoodgoodgoodgoodgood".encode("utf-8")
+    # control
+    input_text = "abcdefghijklmno".encode("utf-8")
+    # 1 bit diff
+    input_text2 = "Abcdefghijklmno".encode("utf-8")
+    # 2 bit diff
+    input_text3 = "ABcdefghijklmno".encode("utf-8")
+    # 3 bit diff
+    input_text4 = "ABCdefghijklmno".encode("utf-8")
+    # 4 bit diff
+    input_text5 = "ABCDefghijklmno".encode("utf-8")
 
     data = input_text
+    data_padded = pad_block(data)
 
     ciphertext = ecb_encrypt(data, round_key_list)
-    print(ciphertext)
+    print(ciphertext.decode('utf-8', 'replace'))
 
     plaintext = ecb_decrypt(ciphertext, round_key_list)
-    print(plaintext)
+    print(plaintext.decode('utf-8', 'replace'))
+
+    # size, difference = avalanche_bit_compare(data_padded, ciphertext)
 
     ciphertext = cbc_encrypt(data, round_key_list, IV)
-    print(ciphertext)
+    print(ciphertext.decode('utf-8', 'replace'))
 
-    ciphertext = cbc_decrypt(data, round_key_list, IV)
-    print(plaintext)
+    plaintext = cbc_decrypt(ciphertext, round_key_list, IV)
+    print(plaintext.decode('utf-8', 'replace'))
 
+    # size, difference = avalanche_bit_compare(data_padded, ciphertext)
 
-    # unpadded_input = unpad_block(padded_input)
 
 
 
@@ -192,33 +226,29 @@ def unpad_block(block: bytes):
 def read_subkeys_file(filename):
     with open(filename, "r") as key_file:
         subkeys_str = key_file.read()
-        subkeys = [int(x.strip(), 16).to_bytes(BLOCK_SIZE, BYTEORDER) for x in subkeys_str.split(',')]
+        try:
+            subkeys = [int(x.strip(), 16).to_bytes(BLOCK_SIZE, BYTEORDER) for x in subkeys_str.split(',')]
+        except OverflowError:
+            print("Key size too big. Keys must be 128-bits.")
         # subkeys = [int(x.strip(), 16) for x in subkeys_str.split(',')]
         # subkeys = [str(int(x.strip(), 16)).encode('utf8') for x in subkeys_str.split(',')]
 
     return subkeys
 
-
-def get_default_subkeys():
-    print("Using default subkeys")
-    default_subkeys = (0xdddddddd, 0xeeeeeeee, 0xaaaaaaaa, 0xdddddddd, 0xbbbbbbbb, 0xeeeeeeee, 0xeeeeeeee, 0xffffffff)
-    return default_subkeys
-
+# def get_default_subkeys():
+#     print("Using default subkeys")
+#     default_subkeys = (0xdddddddd, 0xeeeeeeee, 0xaaaaaaaa, 0xdddddddd, 0xbbbbbbbb, 0xeeeeeeee, 0xeeeeeeee, 0xffffffff)
+#     return default_subkeys
 
 
-def bit_by_bit_compare(hex_string_1, hex_string_2):
-    print("Start Bit by Bit Comparison:")
-    if not len(hex_string_1) == len(hex_string_2):
-        print(f"Length of compared hex strings do not match! 1: {len(hex_string_1)} != 2: {len(hex_string_2)}")
-        return
+def avalanche_bit_compare(a, b):
+    # print("len a:", len(a), " len b:", len(b))
 
-    bit_length_1 = len(hex_string_1) * 4
-    binary_string_1 = format(int(hex_string_1, 16), f'0>{bit_length_1}b')
-    print(f'{hex_string_1}: {binary_string_1}')
+    binary_string_1 = format(int.from_bytes(a, BYTEORDER), f'0{len(a)*8}b')
+    binary_string_2 = format(int.from_bytes(b, BYTEORDER), f'0{len(b)*8}b')
 
-    bit_length_2 = len(hex_string_2) * 4
-    binary_string_2 = format(int(hex_string_2, 16), f'0>{bit_length_2}b')
-    print(f'{hex_string_2}: {binary_string_2}')
+    # print("bin1", len(binary_string_1))
+    # print("bin2", len(binary_string_2))
 
     if not len(binary_string_1) == len(binary_string_2):
         print(f"Length of compared binary strings do not match! 1: {len(binary_string_1)} != 2: "
@@ -232,15 +262,11 @@ def bit_by_bit_compare(hex_string_1, hex_string_2):
         if binary_string_1[x] != binary_string_2[x]:
             count += 1
 
-    print(f"Size: {length}")
-    print(f"Difference: {count} \n")
+    difference = round((count / length) * 100, 2)
+    # print(f"Size: {length}")
+    print(f"Avalanche Bit Difference: {count}, {difference}%\n")
+    return length, difference
 
-    return count, length
-
-
-
-def avalanche_effect():
-    print("Starting Avalanche Effect.")
 
 
 def image_test():
@@ -253,6 +279,18 @@ def ecb_encrypt(data, round_key_list):
     data_block_list = split_byte_data_to_blocks(data_pad, BLOCK_SIZE)
 
     cipher_block_list = []
+    avalanche_data_list = []
+    control_list = []
+    if RECORD_AVALANCHE:
+        with open('avalanche_record.csv', 'r') as file:
+            file.readline()
+            # Split columns while reading
+            for a, b, c in csv.reader(file, delimiter=','):
+                # Append each variable to a separate list
+                control_list.append(c)
+
+    print(control_list)
+
     for n in range(len(data_block_list)):
         data_block = data_block_list[n]
         last_data_block = data_block
@@ -261,12 +299,29 @@ def ecb_encrypt(data, round_key_list):
             data_block_temp = round_function(last_data_block, round_key_list[i])
             last_data_block = data_block_temp
 
+            if RECORD_AVALANCHE and n == 0 and i == 0:
+                size, difference = avalanche_bit_compare(int(control_list[i], 16).to_bytes(BLOCK_SIZE, BYTEORDER), data_block)
+                avalanche_data = (0, difference, data_block.hex())
+                avalanche_data_list.append(avalanche_data)
+
+            if RECORD_AVALANCHE and n == 0:
+                size, difference = avalanche_bit_compare(int(control_list[i+1], 16).to_bytes(BLOCK_SIZE, BYTEORDER), last_data_block)
+                avalanche_data = (i+1, difference, last_data_block.hex())
+                avalanche_data_list.append(avalanche_data)
+
         # swap left and right halves after final round
         left_block = last_data_block[:len(last_data_block) // 2]
         right_block = last_data_block[len(last_data_block) // 2:]
         cipher_block = right_block + left_block
         # print(cipher_block)
         cipher_block_list.append(cipher_block)
+
+    if RECORD_AVALANCHE:
+        with open('avalanche_record.csv', 'w') as out:
+            csv_out = csv.writer(out)
+            csv_out.writerow(['Round', 'Bit Difference', 'Hexadecimal'])
+            for row in avalanche_data_list:
+                csv_out.writerow(row)
 
     return b''.join(cipher_block_list)
 
@@ -362,8 +417,8 @@ def round_function(data_block, round_key):
     right_block = data_block[len(data_block) // 2:]
 
     # call f_function with right block and XOR output with left block
-    # f_block = f_function(right_block, round_key) #### UNCOMMENT LATTER
-    xor_block = xor_bitwise(left_block, right_block)
+    f_block = f_function(right_block, round_key)
+    xor_block = xor_bitwise(left_block, f_block)
 
     # concatenate original right block with new left block in this order
     return right_block + xor_block
@@ -372,15 +427,52 @@ def round_function(data_block, round_key):
 def f_function(data_block, round_key):
     left_key = round_key[:len(round_key) // 2]
     right_key = round_key[len(round_key) // 2:]
+    # print("len check: ", len(left_key) == len(data_block))
 
-    return data_block
+    # XOR with left key
+    xor_block_1 = xor_bitwise(data_block, left_key)
+
+    # Split into 8 blocks of 1 byte each
+    byte_blocks = split_byte_data_to_blocks(xor_block_1, block_size=1)
+    for i in range(len(byte_blocks)):
+        byte_blocks[i] = int.from_bytes(byte_blocks[i], BYTEORDER)
+
+    # Substitute using 4 S-Boxes from Camellia
+    byte_blocks[0] = sbox_1[byte_blocks[0]]
+    byte_blocks[1] = sbox_2[byte_blocks[1]]
+    byte_blocks[2] = sbox_3[byte_blocks[2]]
+    byte_blocks[3] = sbox_4[byte_blocks[3]]
+    byte_blocks[4] = sbox_2[byte_blocks[4]]
+    byte_blocks[5] = sbox_3[byte_blocks[5]]
+    byte_blocks[6] = sbox_4[byte_blocks[6]]
+    byte_blocks[7] = sbox_1[byte_blocks[7]]
+
+    # print(byte_blocks)
+    # print(f"{sbox_1[116]}, {sbox_2[118]}, {sbox_3[117]}, {sbox_4[113]}, {sbox_2[3]}, {sbox_3[5]}, {sbox_4[2]}, {sbox_1[107]}")
+
+    # Permute and Merge back to a block
+    merge_order = [4, 5, 6, 7, 0, 1, 2, 3]
+    merge_byte_list = [byte_blocks[i].to_bytes(1, byteorder=BYTEORDER) for i in merge_order]
+    merge_block = b''.join(merge_byte_list)
+    # print(merge_block)
+
+    # XOR with right key
+    xor_block_2 = xor_bitwise(merge_block, right_key)
+
+    # permute with IP box from DES
+    binary_str_list = list(format(int.from_bytes(xor_block_2, BYTEORDER), f'0{len(xor_block_2) * 8}b'))
+    permute_str_list = [binary_str_list[i-1] for i in ip_box]
+    permute_int = int(''.join(permute_str_list), 2)
+    permute_block = permute_int.to_bytes(int(BLOCK_SIZE/2), byteorder=BYTEORDER)
+
+    return permute_block
 
 
 
 def subkey_generation(key):
     # key = 0xdddddddddddddddddddddddddddddddd
     # TOTAL_ROUNDS
-    key_bytes = int.to_bytes(key, 16, BYTEORDER)
+    key_bytes = int.to_bytes(key, BLOCK_SIZE, BYTEORDER)
     # print(key_bytes)
     # print(len(key_bytes))
     BYTE_BLOCK_SIZE = 1
@@ -508,6 +600,32 @@ def XOR_two_words(word_a, word_b):
 
 
 if __name__ == "__main__":
+    # key = 0x000102030405060708090a0b0c0d0e0f
+    # key_str = f'{key:032x}'
+    #
+    # # 1 bit diff
+    # key2 = 0x100102030405060708090a0b0c0d0e0f
+    # key2_str = f'{key2:032x}'
+    # # 2 bit diff
+    # key3 = 0x110102030405060708090a0b0c0d0e0f
+    # key3_str = f'{key3:032x}'
+    # # 3 bit diff
+    # key4 = 0x111102030405060708090a0b0c0d0e0f
+    # key4_str = f'{key3:032x}'
+    # # 4 bit diff
+    # key5 = 0x110202030405060708090a0b0c0d0e0f
+    # key5_str = f'{key5:032x}'
+    #
+    # avalanche_bit_compare(key.to_bytes(BLOCK_SIZE, BYTEORDER), key5.to_bytes(BLOCK_SIZE, BYTEORDER))
+
+    # input_text = "abcdefghijklmno".encode("utf-8")
+    # input_text2 = "Abcdefghijklmno".encode("utf-8")
+    # input_text3 = "ABcdefghijklmno".encode("utf-8")
+    # input_text4 = "ABCdefghijklmno".encode("utf-8")
+    # input_text5 = "ABCDefghijklmno".encode("utf-8")
+    #
+    # avalanche_bit_compare(input_text, input_text5)
+
     try:
         start_cipher()
     except KeyboardInterrupt as e:
