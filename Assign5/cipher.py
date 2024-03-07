@@ -24,6 +24,8 @@ from lookup_tables import *
 import csv
 from PIL import Image
 import math
+import subprocess
+import sys
 
 
 DEFAULT_SUBKEYS_PATH = "default_subkeys.txt"
@@ -34,6 +36,7 @@ TOTAL_ROUNDS = 16
 BYTEORDER = "big"
 IV = bytes.fromhex("ef05858fe66faa7f273b5eaad1080bf9")  # 16 byte iv
 RECORD_AVALANCHE = False
+
 
 def parse_args():
     """
@@ -85,12 +88,18 @@ def start_cipher():
     else:
         is_encrypt = True
 
+    if not args.mode or (args.mode.lower() != "ecb" and args.mode.lower() != "cbc"):
+        print("Invalid mode, only ECB and CBC supported.")
+        return
+
     if args.inputfile is None and is_encrypt:
         print(f"====================================\n")
         input_text = input("Enter plaintext to encrypt: ")
+        input_text = input_text.encode("utf-8")
     elif args.inputfile is None and not is_encrypt:
         print(f"====================================\n")
         input_text = input("Enter ciphertext (hexstring) to decrypt: ")
+        input_text = bytes.fromhex(input_text)
     else:
         with open(args.inputfile, "rb") as input_file:
             input_text = input_file.read()
@@ -159,48 +168,70 @@ def start_cipher():
     data = input_text
     # data_padded = pad_block(data)
 
-    if args.mode.lower() != "ecb" and args.mode.lower() != "cbc":
-        print("Invalid mode, only ECB and CBC supported.")
-        return
-
     if args.mode.lower() == "ecb":
         if is_encrypt:
             output_text = ecb_encrypt(data, round_key_list)
-            print("Encrypted CipherText Decode: ", output_text.decode('utf-8', 'replace'))
+            if args.outputfile and not args.outputfile.endswith(".bmp"):
+                print("Encrypted CipherText Decode: ", output_text.decode('utf-8', 'replace'))
             if args.outputfile:
                 with open(args.outputfile, "wb") as f:
                     f.write(output_text)
                 if args.outputfile.endswith(".bmp"):
-                    # calculate sizes
-                    num_bytes = len(output_text)
-                    num_pixels = int((num_bytes + 2) / 3)  # 3 bytes per pixel
-                    W = H = int(math.ceil(num_pixels ** 0.5))  # W=H, such that everything fits in
+                    with open(f"dd_{args.outputfile}", "wb") as f:
+                        f.write(output_text)
+                    cmd = ["dd", f"if={args.inputfile}", f"of=dd_{args.outputfile}", "bs=2", "count=54", "conv=notrunc"]
 
-                    # fill the image with zeros, because probably len(imagedata) < needed W*H*3
-                    imagedata = output_text + '\0' * (W * H * 3 - len(output_text))
 
-                    image = Image.fromstring('RGB', (W, H), imagedata)  # create image
-                    image.save(f'header_{args.outputfile}')  # save to a file
+                    process = subprocess.run(cmd)
+                    # # calculate sizes
+                    # num_bytes = len(output_text)
+                    # num_pixels = int((num_bytes + 2) / 3)  # 3 bytes per pixel
+                    # W = H = int(math.ceil(num_pixels ** 0.5))  # W=H, such that everything fits in
+                    #
+                    # # fill the image with zeros, because probably len(imagedata) < needed W*H*3
+                    # imagedata = output_text + b'\x00' * (W * H * 3 - len(output_text))
+                    #
+                    # image = Image.frombytes('RGB', (W, H), imagedata)  # create image
+                    # image.save(f'header_{args.outputfile}')  # save to a file
+
         else:
             output_text = ecb_decrypt(data, round_key_list)
             print("Decrypted PlainText Decode: ", output_text.decode('utf-8', 'replace'))
             if args.outputfile:
-                with open(args.outputfile, "w") as f:
-                    f.write(output_text.decode('utf-8', 'replace'))
+                with open(args.outputfile, "wb") as f:
+                    f.write(output_text)
+                    # f.write(output_text.decode('utf-8', 'replace'))
 
     elif args.mode.lower() == "cbc":
         if is_encrypt:
             output_text = cbc_encrypt(data, round_key_list, IV)
-            print("Encrypted CipherText Decode: ", output_text.decode('utf-8', 'replace'))
+            if args.outputfile and not args.outputfile.endswith(".bmp"):
+                print("Encrypted CipherText Decode: ", output_text.decode('utf-8', 'replace'))
             if args.outputfile:
                 with open(args.outputfile, "wb") as f:
                     f.write(output_text)
+                if args.outputfile.endswith(".bmp"):
+                    with open(f"dd_{args.outputfile}", "wb") as f:
+                        f.write(output_text)
+                    cmd = ["dd", f"if={args.inputfile}", f"of=dd_{args.outputfile}", "bs=2", "count=54", "conv=notrunc"]
+                    process = subprocess.run(cmd)
+                    # # calculate sizes
+                    # num_bytes = len(output_text)
+                    # num_pixels = int((num_bytes + 2) / 3)  # 3 bytes per pixel
+                    # W = H = int(math.ceil(num_pixels ** 0.5))  # W=H, such that everything fits in
+                    #
+                    # # fill the image with zeros, because probably len(imagedata) < needed W*H*3
+                    # imagedata = output_text + b'\x00' * (W * H * 3 - len(output_text))
+                    #
+                    # image = Image.frombytes('RGB', (W, H), imagedata)  # create image
+                    # image.save(f'header_{args.outputfile}')  # save to a file
         else:
             output_text = cbc_decrypt(data, round_key_list, IV)
             print("Decrypted PlainText Decode: ", output_text.decode('utf-8', 'replace'))
             if args.outputfile:
-                with open(args.outputfile, "w") as f:
-                    f.write(output_text.decode('utf-8', 'replace'))
+                with open(args.outputfile, "wb") as f:
+                    f.write(output_text)
+                    # f.write(output_text.decode('utf-8', 'replace'))
 
 
 
@@ -508,6 +539,25 @@ def f_function(data_block, round_key):
     byte_blocks[5] = sbox_3[byte_blocks[5]]
     byte_blocks[6] = sbox_4[byte_blocks[6]]
     byte_blocks[7] = sbox_1[byte_blocks[7]]
+
+    # Permute with XOR using modified Camellia P-function
+    byte_blocks[0] = byte_blocks[0] ^ byte_blocks[5]
+    byte_blocks[1] = byte_blocks[1] ^ byte_blocks[6]
+    byte_blocks[2] = byte_blocks[2] ^ byte_blocks[7]
+    byte_blocks[3] = byte_blocks[3] ^ byte_blocks[4]
+    byte_blocks[4] = byte_blocks[4] ^ byte_blocks[2]
+    byte_blocks[5] = byte_blocks[5] ^ byte_blocks[3]
+    byte_blocks[6] = byte_blocks[6] ^ byte_blocks[0]
+    byte_blocks[7] = byte_blocks[7] ^ byte_blocks[1]
+
+    byte_blocks[0] = byte_blocks[0] ^ byte_blocks[7]
+    byte_blocks[1] = byte_blocks[1] ^ byte_blocks[4]
+    byte_blocks[2] = byte_blocks[2] ^ byte_blocks[5]
+    byte_blocks[3] = byte_blocks[3] ^ byte_blocks[6]
+    byte_blocks[4] = byte_blocks[4] ^ byte_blocks[3]
+    byte_blocks[5] = byte_blocks[5] ^ byte_blocks[0]
+    byte_blocks[6] = byte_blocks[6] ^ byte_blocks[1]
+    byte_blocks[7] = byte_blocks[6] ^ byte_blocks[2]
 
     # print(byte_blocks)
     # print(f"{sbox_1[116]}, {sbox_2[118]}, {sbox_3[117]}, {sbox_4[113]}, {sbox_2[3]}, {sbox_3[5]}, {sbox_4[2]}, {sbox_1[107]}")
