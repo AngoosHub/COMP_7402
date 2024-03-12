@@ -97,14 +97,14 @@ def client_file_transfer_thread(conn, addr):
         # Calculate shared key and send server public key to client
         shared_key, shared_key_compressed = calculate_shared_key(private_key=private_key, compressed_key=data)
         conn.sendall(public_key_compressed.encode("utf8"))
-        print(f"--------------------------------------------------------------------------------"
-              f"Client Connected: {conn}, {addr}"
-              f"Client public key:  {data}"
-              f"Server public key:  {public_key_compressed}"
-              f"Server private key: {hex(private_key)}\n"
-              f"Server shared key ({conn.getpeername()}): {shared_key_compressed}\n"
-              f"Sending Server public key: {public_key_compressed}\n"
-              f"--------------------------------------------------------------------------------\n")
+        print(f"--------------------------------------------------------------------------------\n"
+              f"Client Connected: {conn}, {addr}\n"
+              f"Client public key:  {data}\n"
+              f"Server public key:  {public_key_compressed}\n"
+              f"Server private key: {hex(private_key)}\n\n"
+              f"Server shared key ({conn.getpeername()}): {shared_key_compressed}\n\n"
+              f"Sending Server public key: {public_key_compressed}\n\n"
+              f"--------------------------------------------------------------------------------\n\n")
 
         # Repeat for Initialization Vector
         data_iv = conn.recv(1024).decode('utf8')
@@ -114,14 +114,14 @@ def client_file_transfer_thread(conn, addr):
                                                                        compressed_key=data_iv)
         conn.sendall(public_key_iv_compressed.encode("utf8"))
 
-        print(f"--------------------------------------------------------------------------------"
-              f"Client: {conn.getpeername()}, {addr}"
-              f"Client IV public key:  {data_iv}"
-              f"Server IV public key:  {public_key_iv_compressed}"
-              f"Server IV private key: {hex(private_key_iv)}\n"
-              f"Server IV shared key ({conn.getpeername()}): {shared_key_iv_compressed}\n"
-              f"Sending Server IV public key: {public_key_iv_compressed}\n"
-              f"--------------------------------------------------------------------------------\n")
+        print(f"--------------------------------------------------------------------------------\n"
+              f"Client: {conn.getpeername()}, {addr}\n"
+              f"Client IV public key:  {data_iv}\n"
+              f"Server IV public key:  {public_key_iv_compressed}\n"
+              f"Server IV private key: {hex(private_key_iv)}\n\n"
+              f"Server IV shared key ({conn.getpeername()}): {shared_key_iv_compressed}\n\n"
+              f"Sending Server IV public key: {public_key_iv_compressed}\n\n"
+              f"--------------------------------------------------------------------------------\n\n")
 
 
         # Decrypt cipher text
@@ -131,8 +131,8 @@ def client_file_transfer_thread(conn, addr):
         shared_key_hash = shake_256(shared_key_compressed.encode("utf8")).digest(16)
         shared_key_iv_hash = shake_256(shared_key_iv_compressed.encode("utf8")).digest(16)
 
-        print(f"Server Shared Key Hash: {shared_key_hash.hex()}\n"
-              f"Server Shared Key IV Hash: {shared_key_iv_hash.hex()}\n")
+        print(f"Server Shared Key Hash: {shared_key_hash.hex()}\n\n"
+              f"Server Shared Key IV Hash: {shared_key_iv_hash.hex()}\n\n")
 
         key = int.from_bytes(shared_key_hash, cipher.BYTEORDER)
         IV = shared_key_iv_hash
@@ -140,8 +140,8 @@ def client_file_transfer_thread(conn, addr):
 
         # output_text = cipher.cbc_encrypt(file_data, round_key_list, IV)
         output_text = cipher.cbc_decrypt(cipher_text, round_key_list, IV)
-        print(f"Ciphertext: {cipher_text.decode('utf-8', 'replace')}\n"
-              f"Decrypted Result: {output_text.decode('utf-8', 'replace')}\n")
+        print(f"Ciphertext: {cipher_text.decode('utf-8', 'replace')}\n\n"
+              f"Decrypted Result: {output_text.decode('utf-8', 'replace')}\n\n")
 
     else:
         conn.close()

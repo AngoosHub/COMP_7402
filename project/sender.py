@@ -80,15 +80,17 @@ def start_sender():
         print("Missing port command line argument.")
         return
 
-    if not args.port.isdigit() or int(args.port) >= 0 or int(args.port) <= 65535:
-        print("Invalid port number, must be an number between 0 and 65535.")
-        return
-
     address = args.server
     port = args.port
 
     if args.port != 7402:
+        if type(args.port) == str and not args.port.isdigit():
+            print("Invalid port number, must be an number between 0 and 65535.")
+            return
         port = int(args.port)
+        if port >= 0 or port <= 65535:
+            print("Invalid port number, must be an number between 0 and 65535.")
+            return
 
     try:
         with open(args.filename, "rb") as input_file:
@@ -164,10 +166,10 @@ def start_sender():
 
         # output_text = cipher.cbc_encrypt(file_data, round_key_list, IV)
         output_text = cipher.cbc_encrypt(message, round_key_list, IV)
-        print(f"Ciphertext: {output_text.decode('utf-8', 'replace')}\n")
+        print("Ciphertext: {output_text.decode('utf-8', 'replace')}\n")
 
         my_sock.sendall(output_text)
-        print(f"Sending Ciphertext: {output_text.decode('utf-8', 'replace')}\n")
+        print("Sending Ciphertext: ", output_text.decode('utf-8', 'replace'), "\n")
 
         my_sock.close()
 

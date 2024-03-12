@@ -19,7 +19,7 @@ encryption.py
 
 
 import os, random, struct
-from Crypto.Cipher import AES
+# from Crypto.Cipher import AES
 from tinyec import registry
 import secrets
 from nummaster.basic import sqrtmod
@@ -49,48 +49,48 @@ def calculate_shared_key(private_key, compressed_key):
     return shared_key, shared_key_compressed
 
 
-def AES_encrypt(shared_key, shared_key_iv, message):
-    aes_sha256_key = sha256(shared_key.encode("utf8")).hexdigest()
-    aes_shake256_iv = shake_256(shared_key_iv.encode("utf8")).digest(16)
-
-    print(f"\nAES Key (sha256 hashed shared secret): {aes_sha256_key}")
-    print(f"\nAES IV (sha256 hashed shared secret):  {aes_shake256_iv.hex()}")
-
-    key = bytes.fromhex(aes_sha256_key)
-    IV = aes_shake256_iv
-
-    # 32-byte Plaintext string
-    plaintext = message
-
-    encryptor = AES.new(key, AES.MODE_CBC, IV)
-
-    ciphertext = encryptor.encrypt(plaintext.encode("utf8"))
-    print("\nCipher text: ", ciphertext)
-
-    decryptor = AES.new(key, AES.MODE_CBC, IV)
-    decrypted = decryptor.decrypt(ciphertext)
-    print("\nDecrypt text: ", decrypted.decode("utf8"))
-
-    return ciphertext
-
-
-def AES_decrypt(shared_key, shared_key_iv, cipher_text):
-    aes_sha256_key = sha256(shared_key.encode("utf8")).hexdigest()
-    aes_shake256_iv = shake_256(shared_key_iv.encode("utf8")).digest(16)
-
-    print(f"\nAES Key (sha256 hashed 256-bit key): {aes_sha256_key}")
-    print(f"\nAES IV (shake256 hashed 128-bit IV):  {aes_shake256_iv.hex()}")
-
-    key = bytes.fromhex(aes_sha256_key)
-    IV = aes_shake256_iv
-
-    print("\nCipher text: ", cipher_text)
-
-    decryptor = AES.new(key, AES.MODE_CBC, IV)
-    decrypted = decryptor.decrypt(cipher_text)
-    print("\nDecrypt text: ", decrypted.decode("utf8"))
-
-    return decrypted
+# def AES_encrypt(shared_key, shared_key_iv, message):
+#     aes_sha256_key = sha256(shared_key.encode("utf8")).hexdigest()
+#     aes_shake256_iv = shake_256(shared_key_iv.encode("utf8")).digest(16)
+#
+#     print(f"\nAES Key (sha256 hashed shared secret): {aes_sha256_key}")
+#     print(f"\nAES IV (sha256 hashed shared secret):  {aes_shake256_iv.hex()}")
+#
+#     key = bytes.fromhex(aes_sha256_key)
+#     IV = aes_shake256_iv
+#
+#     # 32-byte Plaintext string
+#     plaintext = message
+#
+#     encryptor = AES.new(key, AES.MODE_CBC, IV)
+#
+#     ciphertext = encryptor.encrypt(plaintext.encode("utf8"))
+#     print("\nCipher text: ", ciphertext)
+#
+#     decryptor = AES.new(key, AES.MODE_CBC, IV)
+#     decrypted = decryptor.decrypt(ciphertext)
+#     print("\nDecrypt text: ", decrypted.decode("utf8"))
+#
+#     return ciphertext
+#
+#
+# def AES_decrypt(shared_key, shared_key_iv, cipher_text):
+#     aes_sha256_key = sha256(shared_key.encode("utf8")).hexdigest()
+#     aes_shake256_iv = shake_256(shared_key_iv.encode("utf8")).digest(16)
+#
+#     print(f"\nAES Key (sha256 hashed 256-bit key): {aes_sha256_key}")
+#     print(f"\nAES IV (shake256 hashed 128-bit IV):  {aes_shake256_iv.hex()}")
+#
+#     key = bytes.fromhex(aes_sha256_key)
+#     IV = aes_shake256_iv
+#
+#     print("\nCipher text: ", cipher_text)
+#
+#     decryptor = AES.new(key, AES.MODE_CBC, IV)
+#     decrypted = decryptor.decrypt(cipher_text)
+#     print("\nDecrypt text: ", decrypted.decode("utf8"))
+#
+#     return decrypted
 
 
 def compress_key(point):
