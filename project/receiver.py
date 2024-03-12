@@ -63,15 +63,17 @@ def start_receiver():
         print("Missing port command line argument.")
         return
 
-    if not args.port.isdigit() or int(args.port) >= 0 or int(args.port) <= 65535:
-        print("Invalid port number, must be an number between 0 and 65535.")
-        return
-
     address = args.server
     port = args.port
 
     if args.port != 7402:
+        if type(args.port) == str and not args.port.isdigit():
+            print("Invalid port number, must be an number between 0 and 65535.")
+            return
         port = int(args.port)
+        if port >= 0 or port <= 65535:
+            print("Invalid port number, must be an number between 0 and 65535.")
+            return
 
     with sock.socket(sock.AF_INET, sock.SOCK_STREAM) as IPv4_sock:
         IPv4_sock.setsockopt(sock.SOL_SOCKET, sock.SO_REUSEADDR, 1)
