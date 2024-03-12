@@ -3,10 +3,10 @@
 """
 ----------------------------------------------------------------------------------------------------
 COMP 7402 - Cryptology
-Assignment 4:
-    - Implement an 8-round Feistel Cipher.
-    - Implement ECB and CBC cryptographic modes.
-    - Implement subkey generation.
+Assignment 5:
+    - Implement an 16-round Feistel Cipher.
+    - Implement CBC cryptographic mode.
+    - Implement 128-bits subkey generation.
     - Able to encrypt text file specified by user.
 Student:
     - Hung Yu (Angus) Lin, A01034410
@@ -36,6 +36,7 @@ TOTAL_ROUNDS = 16
 BYTEORDER = "big"
 IV = bytes.fromhex("ef05858fe66faa7f273b5eaad1080bf9")  # 16 byte iv
 RECORD_AVALANCHE = False
+SHOW_CIPHER_COMMENTS = False
 
 
 def parse_args():
@@ -180,19 +181,7 @@ def start_cipher():
                     with open(f"dd_{args.outputfile}", "wb") as f:
                         f.write(output_text)
                     cmd = ["dd", f"if={args.inputfile}", f"of=dd_{args.outputfile}", "bs=2", "count=54", "conv=notrunc"]
-
-
                     process = subprocess.run(cmd)
-                    # # calculate sizes
-                    # num_bytes = len(output_text)
-                    # num_pixels = int((num_bytes + 2) / 3)  # 3 bytes per pixel
-                    # W = H = int(math.ceil(num_pixels ** 0.5))  # W=H, such that everything fits in
-                    #
-                    # # fill the image with zeros, because probably len(imagedata) < needed W*H*3
-                    # imagedata = output_text + b'\x00' * (W * H * 3 - len(output_text))
-                    #
-                    # image = Image.frombytes('RGB', (W, H), imagedata)  # create image
-                    # image.save(f'header_{args.outputfile}')  # save to a file
 
         else:
             output_text = ecb_decrypt(data, round_key_list)
@@ -215,16 +204,6 @@ def start_cipher():
                         f.write(output_text)
                     cmd = ["dd", f"if={args.inputfile}", f"of=dd_{args.outputfile}", "bs=2", "count=54", "conv=notrunc"]
                     process = subprocess.run(cmd)
-                    # # calculate sizes
-                    # num_bytes = len(output_text)
-                    # num_pixels = int((num_bytes + 2) / 3)  # 3 bytes per pixel
-                    # W = H = int(math.ceil(num_pixels ** 0.5))  # W=H, such that everything fits in
-                    #
-                    # # fill the image with zeros, because probably len(imagedata) < needed W*H*3
-                    # imagedata = output_text + b'\x00' * (W * H * 3 - len(output_text))
-                    #
-                    # image = Image.frombytes('RGB', (W, H), imagedata)  # create image
-                    # image.save(f'header_{args.outputfile}')  # save to a file
         else:
             output_text = cbc_decrypt(data, round_key_list, IV)
             print("Decrypted PlainText Decode: ", output_text.decode('utf-8', 'replace'))
@@ -250,7 +229,6 @@ def start_cipher():
     # print("Decrypted PlainText Decode: ", plaintext.decode('utf-8', 'replace'))
 
     # size, difference = avalanche_bit_compare(data_padded, ciphertext)
-
 
 
 
@@ -436,24 +414,25 @@ def ecb_decrypt(data, round_key_list):
     return b''.join(plaintext_block_list)
 
 
-def cbc_encrypt(data, round_key_list, iv):
+def cbc_encrypt(data: bytes, round_key_list, iv: bytes):
     # pad last block to block size.
     data_pad = pad_block(data)
     data_block_list = split_byte_data_to_blocks(data_pad, BLOCK_SIZE)
-    print("\n")
 
     cipher_block_list = []
     for n in range(len(data_block_list)):
         data_block = data_block_list[n]
         # XOR initialization vector with data block
         last_data_block = xor_bitwise(data_block, iv)
-        print(f"====Data Block {n + 1}====\n"
-              f"Data Block = {data_block.hex()}")
+        if SHOW_CIPHER_COMMENTS:
+            print(f"====Data Block {n + 1}====\n"
+                  f"Data Block = {data_block.hex()}")
 
         for i in range(len(round_key_list)):
             data_block_temp = round_function(last_data_block, round_key_list[i])
             last_data_block = data_block_temp
-            print(f"Round {i + 1} - Block = {last_data_block.hex()}")
+            if SHOW_CIPHER_COMMENTS:
+                print(f"Round {i + 1} - Block = {last_data_block.hex()}")
 
         # swap left and right halves after final round
         left_block = last_data_block[:len(last_data_block) // 2]
@@ -462,8 +441,9 @@ def cbc_encrypt(data, round_key_list, iv):
         cipher_block_list.append(cipher_block)
         # set iv as current block for next block
         iv = cipher_block
-        print(f"CipherText = {cipher_block.hex()}")
-        print("\n")
+        if SHOW_CIPHER_COMMENTS:
+            print(f"CipherText = {cipher_block.hex()}")
+            print("\n")
 
     return b''.join(cipher_block_list)
 
@@ -477,13 +457,15 @@ def cbc_decrypt(data, round_key_list, iv):
     for n in range(len(data_block_list)):
         data_block = data_block_list[n]
         last_data_block = data_block
-        print(f"====Data Block {n + 1}====\n"
-              f"Data Block = {data_block.hex()}")
+        if SHOW_CIPHER_COMMENTS:
+            print(f"====Data Block {n + 1}====\n"
+                  f"Data Block = {data_block.hex()}")
 
         for i in range(len(keys_reverse)):
             data_block_temp = round_function(last_data_block, keys_reverse[i])
             last_data_block = data_block_temp
-            print(f"Round {i + 1} - Block = {last_data_block.hex()}")
+            if SHOW_CIPHER_COMMENTS:
+                print(f"Round {i + 1} - Block = {last_data_block.hex()}")
 
         # swap left and right halves after final round
         left_block = last_data_block[:len(last_data_block) // 2]
@@ -494,8 +476,9 @@ def cbc_decrypt(data, round_key_list, iv):
         plaintext_block = xor_bitwise(plaintext_block_iv, iv)
 
         plaintext_block_list.append(plaintext_block)
-        print(f"CipherText = {plaintext_block.hex()}")
-        print("\n")
+        if SHOW_CIPHER_COMMENTS:
+            print(f"CipherText = {plaintext_block.hex()}")
+            print("\n")
         # set iv as last cipher block for next block
         iv = data_block
 
@@ -645,27 +628,29 @@ def subkey_generation(key):
         new_subkey = b''.join(new_subkey)
         round_key_list.append(new_subkey)
 
-        print(f"\n===Subkey Round {i}===")
-        print("LastWord: ", last_word_4)
-        print("After Rot_word: ", word_r)
-        print("After Sub_word_mod: ", word_rs)
-        print("After Rcon_word_mod: ", word_rsr)
-        print("After XOR with last_word1: ", word1_)
-        print("Word1_: ", word1_)
-        print("Word2_: ", word2_)
-        print("Word3_: ", word3_)
-        print("Word4_: ", word4_)
-        print("Round_Key: ", new_subkey.hex())
+        if SHOW_CIPHER_COMMENTS:
+            print(f"\n===Subkey Round {i}===")
+            print("LastWord: ", last_word_4)
+            print("After Rot_word: ", word_r)
+            print("After Sub_word_mod: ", word_rs)
+            print("After Rcon_word_mod: ", word_rsr)
+            print("After XOR with last_word1: ", word1_)
+            print("Word1_: ", word1_)
+            print("Word2_: ", word2_)
+            print("Word3_: ", word3_)
+            print("Word4_: ", word4_)
+            print("Round_Key: ", new_subkey.hex())
 
         last_word_1 = word1_
         last_word_2 = word2_
         last_word_3 = word3_
         last_word_4 = word4_
 
-    print("\n==== Subkey Generation ====")
-    print(f"Inital Key: {key:x}")
-    for n in range(len(round_key_list)):
-        print(f"Round Key {n+1}: {round_key_list[n].hex()}")
+    if SHOW_CIPHER_COMMENTS:
+        print("\n==== Subkey Generation ====")
+        print(f"Inital Key: {key:x}")
+        for n in range(len(round_key_list)):
+            print(f"Round Key {n+1}: {round_key_list[n].hex()}")
 
     return round_key_list
 
@@ -709,8 +694,7 @@ def XOR_two_words(word_a, word_b):
     # print(word_c)
     return word_c
 
-def image_test():
-    print("Starting image test.")
+
 
 if __name__ == "__main__":
 
@@ -767,65 +751,3 @@ if __name__ == "__main__":
         print("Shutting Down.")
         exit()
 
-
-# if __name__ == "__main__":
-#
-#     # key = "0xdddddddd"
-#     # print(key)
-#     # print(int(key, 16))
-#     # print(hex(int(key, 16)))
-#
-#     # exit()
-#     # val = 0xdddddddd
-#     # sub_val = sbox_1[val]
-#
-#     # 3e9e98e31ba18d8d18283aceb3c6e170
-#     # 16b729e1363afc5bea8bf7df295b03e9
-#     import os
-#     k = os.urandom(16)
-#     # print(k)
-#     # print(len(k))
-#
-#     val = 0xdddddddd
-#     val2 = 0xeeeeeeee
-#     g = int.to_bytes(val, 4, byteorder=BYTEORDER)
-#     f = int.to_bytes(val2, 4, byteorder=BYTEORDER)
-#     # print(g)
-#     # print(len(g))
-#
-#     # z = "3e9e98e31ba18d8d18283aceb3c6e170"
-#     # print(z.encode())
-#     # print(len(z.encode()))
-#
-#     # import hashlib
-#     # key = hashlib.sha256("test".encode()).digest()
-#     # print(key)
-#     # print(len(key))
-#
-#     val_hex = bytes(a ^ b for a, b in zip(g, f))
-#     print(val_hex)
-#
-#     int_var = int.from_bytes(g, BYTEORDER)
-#     int_key = int.from_bytes(f, BYTEORDER)
-#     int_enc = int_var ^ int_key
-#     output = int_enc.to_bytes(len(g), byteorder=BYTEORDER)
-#     # print(output)
-#     # print(output.hex())
-#
-#
-#
-#     # key = 0xdddddddddddddddddddddddddddddddd
-#     key = 0x000102030405060708090a0b0c0d0e0f
-#     subkey_generation(key)
-#
-#     start_cipher()
-#
-#
-#     exit()
-#
-#
-#     try:
-#         start_cipher()
-#     except KeyboardInterrupt as e:
-#         print("Shutting Down.")
-#         exit()
