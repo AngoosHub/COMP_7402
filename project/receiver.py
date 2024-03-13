@@ -172,7 +172,7 @@ def client_file_transfer_thread(conn, addr):
           f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, Decrypted Payload: ", end="")
     print(decrypted_block.decode('utf-8', 'replace'), end="")
 
-    output_filename = decrypted_block.decode('utf-8', 'replace')
+    output_filename = f"{addr[0]}" + decrypted_block.decode('utf-8', 'replace')
     current_iv = decrypted_block
     counter += 1
 
