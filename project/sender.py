@@ -113,7 +113,7 @@ def start_sender():
     #         message = plaintext
     #         break
     # message = 'fortuneofthesedaysthatonemaythinkwhatonelikesandsaywhatonethinks'.encode('utf-8')
-    test_message = 'Test Msg for ECDH key and Cipher encrypt/decrypt is successful.'.encode('utf-8')
+    test_message = 'Test Message for ECDH key exchange and Cipher encrypt/decrypt.'.encode('utf-8')
 
 
     # IPv4 Socket connection to receiver.
@@ -180,9 +180,9 @@ def start_sender():
 
         # output_text = cipher.cbc_encrypt(file_data, round_key_list, IV)
         output_text = cipher.cbc_encrypt(test_message, round_key_list, IV)
-        print(f"Test plaintext: {test_message.decode('utf-8', 'replace')}")
-        print(f"Test Ciphertext: {output_text.decode('utf-8', 'replace')}")
-        print(f"Sending Ciphertext. Msg_Type: DAT, Payload: {output_text.decode('utf-8', 'replace')}\n")
+        print("Test plaintext: ", test_message.decode('utf-8', 'replace'))
+        print("Test Ciphertext: ", output_text.decode('utf-8', 'replace'))
+        print("Sending Ciphertext. Msg_Type: DAT, Payload: ", output_text.decode('utf-8', 'replace'), "\n")
         send_message_type(socket=my_sock, msg_type="DAT", payload=output_text)
 
         print(f"--------------------------------------------------------------------------------\n")
