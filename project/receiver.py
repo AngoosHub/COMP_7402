@@ -152,8 +152,10 @@ def client_file_transfer_thread(conn, addr):
         output_text = cipher.cbc_decrypt(cipher_text, round_key_list, IV)
         print(f"--------------------------------------------------------------------------------\n"
               f"Client IP: {addr[0]}\n"
-              f"Received Msg_Type: {msg_type}, Ciphertext/Payload: ", cipher_text.decode('utf-8', 'replace'), "\n\n"
-              f"Decrypted Result: ", output_text.decode('utf-8', 'replace'), "\n\n")
+              f"Received Msg_Type: {msg_type}, Ciphertext/Payload: ", end="")
+        print(cipher_text.decode('utf-8', 'replace'), "\n")
+        print(f"Decrypted Result: ", end="")
+        print(output_text.decode('utf-8', 'replace'), "\n\n")
     else:
         return
 

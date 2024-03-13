@@ -180,9 +180,12 @@ def start_sender():
 
         # output_text = cipher.cbc_encrypt(file_data, round_key_list, IV)
         output_text = cipher.cbc_encrypt(test_message, round_key_list, IV)
-        print("Test plaintext: ", test_message.decode('utf-8', 'replace'))
-        print("Test Ciphertext: ", output_text.decode('utf-8', 'replace'))
-        print("Sending Ciphertext. Msg_Type: DAT, Payload: ", output_text.decode('utf-8', 'replace'), "\n")
+        print(f"Test plaintext: ", end="")
+        print(test_message.decode('utf-8', 'replace'))
+        print(f"Test Ciphertext: ", end="")
+        print(output_text.decode('utf-8', 'replace'))
+        print(f"Sending Ciphertext. Msg_Type: DAT, Payload: ", end="")
+        print(output_text.decode('utf-8', 'replace'), "\n")
         send_message_type(socket=my_sock, msg_type="DAT", payload=output_text)
 
         print(f"--------------------------------------------------------------------------------\n")
