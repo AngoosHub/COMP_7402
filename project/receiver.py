@@ -176,7 +176,7 @@ def client_file_transfer_thread(conn, addr):
     current_iv = cipher_block
     counter += 1
 
-    print(f"Server Response: ACK")
+    print(f", Server Response: ACK")
     send_message_type(socket=conn, msg_type="ACK", payload="Server ACK".encode('utf-8'))
 
     msg_type, cipher_block = receive_message_type(socket=conn)
@@ -189,6 +189,8 @@ def client_file_transfer_thread(conn, addr):
 
             if msg_type == "PAD":
                 decrypted_block = cipher.cbc_decrypt(cipher_block, round_key_list, current_iv)
+                print(cipher_block)
+                print(decrypted_block)
             else:
                 decrypted_block = cipher.cbc_decrypt(cipher_block, round_key_list, current_iv, unpad=False)
             print(f"--------------------------------------------------------------------------------\n"

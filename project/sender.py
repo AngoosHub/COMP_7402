@@ -201,6 +201,7 @@ def start_sender():
         try:
             with open(args.filename, "rb") as input_file:
                 for block in iter(partial(input_file.read, 16), b''):
+                    print(len(block))
                     if len(block) < 16:
                         encrypted_block = cipher.cbc_encrypt(block, round_key_list, current_iv)
                         print(f"--------------------------------------------------------------------------------")
@@ -214,14 +215,14 @@ def start_sender():
                         print(encrypted_block.decode('utf-8', 'replace'))
                         send_message_type(socket=my_sock, msg_type="DAT", payload=encrypted_block)
 
+                    current_iv = encrypted_block
+                    counter += 1
+
                     msg_type, payload = receive_message_type(socket=my_sock)
                     print(f"Received Msg_Type: {msg_type}, Payload: {payload.decode('utf-8')}")
                     if msg_type != "ACK":
                         print(f"Received Unexpected Msg_Type: {msg_type}, Expected ACK, Payload: {payload.decode('utf-8')}")
                         break
-
-                    current_iv = encrypted_block
-                    counter += 1
 
         except FileNotFoundError:
             print(f"FileNotFoundError: {args.filename} was not found.")
