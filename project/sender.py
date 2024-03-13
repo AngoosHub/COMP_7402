@@ -190,6 +190,7 @@ def start_sender():
 
         print(f"--------------------------------------------------------------------------------\n")
 
+        send_message_type(socket=my_sock, msg_type="EOT", payload=b'')
         my_sock.close()
 
 

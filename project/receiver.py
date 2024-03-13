@@ -159,6 +159,8 @@ def client_file_transfer_thread(conn, addr):
     else:
         return
 
+    msg_type, payload = receive_message_type(socket=conn)
+
 
 # def server_ECDH_exchange(sender_public_key_compressed):
 #     receiver_private_key = secrets.randbelow(curve.field.n)
