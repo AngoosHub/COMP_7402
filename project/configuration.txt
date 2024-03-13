@@ -1,5 +1,0 @@
-# CONFIGURATION FILE
-#
-receiver_address=192.168.12.106
-receiver_port=7402
-sender_address=192.168.12.115

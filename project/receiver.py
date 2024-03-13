@@ -108,7 +108,7 @@ def client_file_transfer_thread(conn, addr):
               f"Server private key: {private_key:x}\n\n"
               f"Sending Server public key. Msg_Type: KEY, Payload: {public_key_compressed[2:]}\n\n"
               f"Server shared key ({addr[0]}): {shared_key_compressed[2:]}\n\n"
-              f"Server Shared Key Hash: {shared_key_hash.hex()}\n\n")
+              f"Server Shared Key Hash: {shared_key_hash.hex()}\n")
         # conn.sendall(public_key_compressed.encode("utf8"))
         send_message_type(socket=conn, msg_type="KEY", payload=public_key_compressed.encode("utf-8"))
 
@@ -133,7 +133,7 @@ def client_file_transfer_thread(conn, addr):
               f"Server IV (Nonce) private key: {private_key_iv:x}\n\n"
               f"Sending Server IV (Nonce) public key. Msg_Type: KEY, Payload: {public_key_iv_compressed[2:]}\n\n"
               f"Server IV (Nonce) shared key ({addr[0]}): {shared_key_iv_compressed[2:]}\n\n"
-              f"Server Shared Key IV (Nonce) Hash: {shared_key_iv_hash.hex()}\n\n")
+              f"Server Shared Key IV (Nonce) Hash: {shared_key_iv_hash.hex()}\n")
         # conn.sendall(public_key_iv_compressed.encode("utf8"))
         send_message_type(socket=conn, msg_type="KEY", payload=public_key_iv_compressed.encode("utf-8"))
 
@@ -152,14 +152,58 @@ def client_file_transfer_thread(conn, addr):
         output_text = cipher.cbc_decrypt(cipher_text, round_key_list, IV)
         print(f"--------------------------------------------------------------------------------\n"
               f"Client IP: {addr[0]}\n"
-              f"Received Msg_Type: {msg_type}, Ciphertext/Payload: ", end="")
+              f"Received Msg_Type: {msg_type}, Payload: ", end="")
         print(cipher_text.decode('utf-8', 'replace'), "\n")
         print(f"Decrypted Result: ", end="")
         print(output_text.decode('utf-8', 'replace'), "\n\n")
     else:
         return
 
+    counter = 0
+    current_iv = IV
+    msg_type, cipher_block = receive_message_type(socket=conn)
+    if msg_type != "DAT" or msg_type != "PAD":
+        print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT or PAD, Payload: {data_iv}")
+        return
+
+    decrypted_block = cipher.cbc_decrypt(cipher_block, round_key_list, current_iv)
+    print(f"--------------------------------------------------------------------------------\n"
+          f"Client IP: {addr[0]}\n"
+          f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, Decrypted Payload: ", end="")
+    print(decrypted_block.decode('utf-8', 'replace'), end="")
+
+    output_filename = decrypted_block.decode('utf-8', 'replace')
+    current_iv = decrypted_block
+    counter += 1
+
+    print(f"Server Response: ACK")
+    send_message_type(socket=conn, msg_type="ACK", payload="Server ACK".encode('utf-8'))
+
     msg_type, payload = receive_message_type(socket=conn)
+
+    while msg_type != "EOT":
+        with open(output_filename, "wb") as output_file:
+            if msg_type != "DAT" or msg_type != "PAD":
+                print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT or PAD, Payload: {data_iv}")
+                return
+
+            if msg_type == "PAD":
+                decrypted_block = cipher.cbc_decrypt(cipher_block, round_key_list, current_iv)
+            else:
+                decrypted_block = cipher.cbc_decrypt(cipher_block, round_key_list, current_iv, unpad=False)
+            print(f"--------------------------------------------------------------------------------\n"
+                  f"Client IP: {addr[0]}\n"
+                  f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, Decrypted Payload: ", end="")
+            print(decrypted_block.decode('utf-8', 'replace'), end="")
+
+            output_file.write(decrypted_block)
+            current_iv = decrypted_block
+            counter += 1
+
+            print(f"Server Response: ACK")
+            send_message_type(socket=conn, msg_type="ACK", payload="Server ACK".encode('utf-8'))
+
+            msg_type, payload = receive_message_type(socket=conn)
 
 
 # def server_ECDH_exchange(sender_public_key_compressed):

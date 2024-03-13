@@ -414,9 +414,12 @@ def ecb_decrypt(data, round_key_list):
     return b''.join(plaintext_block_list)
 
 
-def cbc_encrypt(data: bytes, round_key_list, iv: bytes):
+def cbc_encrypt(data: bytes, round_key_list, iv: bytes, pad=True):
     # pad last block to block size.
-    data_pad = pad_block(data)
+    if pad:
+        data_pad = pad_block(data)
+    else:
+        data_pad = data
     data_block_list = split_byte_data_to_blocks(data_pad, BLOCK_SIZE)
 
     cipher_block_list = []
@@ -448,7 +451,7 @@ def cbc_encrypt(data: bytes, round_key_list, iv: bytes):
     return b''.join(cipher_block_list)
 
 
-def cbc_decrypt(data, round_key_list, iv):
+def cbc_decrypt(data, round_key_list, iv, unpad=True):
     keys_reverse = list(reversed(round_key_list))
 
     data_block_list = split_byte_data_to_blocks(data, BLOCK_SIZE)
@@ -483,7 +486,9 @@ def cbc_decrypt(data, round_key_list, iv):
         iv = data_block
 
     # unpad last block
-    plaintext_block_list[-1] = unpad_block(plaintext_block_list[-1])
+    if unpad:
+        plaintext_block_list[-1] = unpad_block(plaintext_block_list[-1])
+
     return b''.join(plaintext_block_list)
 
 

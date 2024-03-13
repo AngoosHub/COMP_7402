@@ -24,6 +24,7 @@ from tinyec import registry
 from hashlib import shake_256  # sha256
 from _thread import *
 import socket as sock
+from functools import partial
 
 
 # def cipher_encrypt(key, IV, data):
@@ -92,12 +93,6 @@ def start_sender():
             print("Invalid port number, must be an number between 0 and 65535.")
             return
 
-    try:
-        with open(args.filename, "rb") as input_file:
-            file_data = input_file.read()
-    except FileNotFoundError:
-        print(f"FileNotFoundError: {args.filename} was not found.")
-
 
     # while True:
     #     plaintext = 'fortuneofthesedaysthatonemaythinkwhatonelikesandsaywhatonethinks'
@@ -113,7 +108,7 @@ def start_sender():
     #         message = plaintext
     #         break
     # message = 'fortuneofthesedaysthatonemaythinkwhatonelikesandsaywhatonethinks'.encode('utf-8')
-    test_message = 'Test Message for ECDH key exchange and Cipher encrypt/decrypt.'.encode('utf-8')
+    test_message = 'Test Message!'.encode('utf-8')
 
 
     # IPv4 Socket connection to receiver.
@@ -188,8 +183,52 @@ def start_sender():
         print(output_text.decode('utf-8', 'replace'), "\n")
         send_message_type(socket=my_sock, msg_type="DAT", payload=output_text)
 
-        print(f"--------------------------------------------------------------------------------\n")
+        counter = 0
+        current_iv = IV
+        encrypted_block = cipher.cbc_encrypt(args.filename, round_key_list, current_iv)
+        print(f"--------------------------------------------------------------------------------")
+        print(f"Sending Encrypted Block: {counter}. Msg_Type: PAD, Payload: ", end="")
+        print(encrypted_block.decode('utf-8', 'replace'))
+        send_message_type(socket=my_sock, msg_type="PAD", payload=encrypted_block)
+        msg_type, payload = receive_message_type(socket=my_sock)
+        print(f"Received Msg_Type: {msg_type}, Payload: {payload.decode('utf-8')}")
+        if msg_type != "ACK":
+            print(f"Received Unexpected Msg_Type: {msg_type}, Expected ACK, Payload: {payload.decode('utf-8')}")
+            return
+        current_iv = encrypted_block
+        counter += 1
 
+        try:
+            with open(args.filename, "rb") as input_file:
+                for block in iter(partial(input_file.read, 16), b''):
+                    if len(block) < 16:
+                        encrypted_block = cipher.cbc_encrypt(block, round_key_list, current_iv)
+                        print(f"--------------------------------------------------------------------------------")
+                        print(f"Sending Encrypted Block: {counter}. Msg_Type: PAD, Payload: ", end="")
+                        print(encrypted_block.decode('utf-8', 'replace'))
+                        send_message_type(socket=my_sock, msg_type="PAD", payload=encrypted_block)
+                    else:
+                        encrypted_block = cipher.cbc_encrypt(block, round_key_list, current_iv, pad=False)
+                        print(f"--------------------------------------------------------------------------------")
+                        print(f"Sending Encrypted Block: {counter}. Msg_Type: DAT, Payload: ", end="")
+                        print(encrypted_block.decode('utf-8', 'replace'))
+                        send_message_type(socket=my_sock, msg_type="DAT", payload=encrypted_block)
+
+                    msg_type, payload = receive_message_type(socket=my_sock)
+                    print(f"Received Msg_Type: {msg_type}, Payload: {payload.decode('utf-8')}")
+                    if msg_type != "ACK":
+                        print(f"Received Unexpected Msg_Type: {msg_type}, Expected ACK, Payload: {payload.decode('utf-8')}")
+                        break
+
+                    current_iv = encrypted_block
+                    counter += 1
+
+        except FileNotFoundError:
+            print(f"FileNotFoundError: {args.filename} was not found.")
+
+
+        print(f"--------------------------------------------------------------------------------")
+        print(f"Transmission Finished, Sending EOT. Msg_Type: EOT", end="")
         send_message_type(socket=my_sock, msg_type="EOT", payload=b'')
         my_sock.close()
 
@@ -201,6 +240,8 @@ def send_message_type(socket: sock.socket, msg_type: str, payload: bytes):
         prefix = "ACK".encode('utf-8')
     elif msg_type.upper() == "DAT":
         prefix = "DAT".encode('utf-8')
+    elif msg_type.upper() == "PAD":
+        prefix = "PAD".encode('utf-8')
     elif msg_type.upper() == "EOT":
         prefix = "EOT".encode('utf-8')
     else:
@@ -216,14 +257,15 @@ def receive_message_type(socket: sock.socket):
 
     if not message:
         socket.close()
-        print("Unexpected connection closed.")
+        print("Connection closed unexpected.")
         return "EOT", b''
 
     msg_type = message[0:3].decode("utf-8").upper()
     payload = message[3:]
 
     if msg_type == "EOT":
-        print(f"Client IP: {socket.getpeername()[1]}, Received Msg_Type: {msg_type}, Closing connection.")
+        print(f"--------------------------------------------------------------------------------")
+        print(f"Client IP: {socket.getpeername()[0]}, Received Msg_Type: {msg_type}, Closing connection.")
         socket.close()
 
     return msg_type, payload
