@@ -182,7 +182,7 @@ def client_file_transfer_thread(conn, addr):
     msg_type, cipher_block = receive_message_type(socket=conn)
 
     while msg_type != "EOT":
-        with open(output_filename, "wb") as output_file:
+        with open(output_filename, "ab") as output_file:
             if msg_type != "DAT" and msg_type != "PAD":
                 print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT or PAD, Payload: {cipher_block}")
                 return
@@ -193,14 +193,15 @@ def client_file_transfer_thread(conn, addr):
                 decrypted_block = cipher.cbc_decrypt(cipher_block, round_key_list, current_iv, unpad=False)
             print(f"--------------------------------------------------------------------------------\n"
                   f"Client IP: {addr[0]}\n"
-                  f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, Decrypted Payload: ", end="")
+                  f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, "
+                  f"IV: {int.from_bytes(current_iv, cipher.BYTEORDER)} \nDecrypted Payload: ", end="")
             print(decrypted_block.decode('utf-8', 'replace'), end="")
 
             output_file.write(decrypted_block)
             current_iv = cipher_block
             counter += 1
 
-            print(f"Server Response: ACK")
+            print(f", Server Response: ACK")
             send_message_type(socket=conn, msg_type="ACK", payload="Server ACK".encode('utf-8'))
 
             msg_type, cipher_block = receive_message_type(socket=conn)
