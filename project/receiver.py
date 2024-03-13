@@ -140,7 +140,7 @@ def client_file_transfer_thread(conn, addr):
         # Decrypt cipher text
         msg_type, cipher_text = receive_message_type(socket=conn)
         if msg_type != "DAT":
-            print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT, Payload: {data_iv}")
+            print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT, Payload: {cipher_text}")
             return
 
         # Begin Decryption
@@ -163,7 +163,7 @@ def client_file_transfer_thread(conn, addr):
     current_iv = IV
     msg_type, cipher_block = receive_message_type(socket=conn)
     if msg_type != "DAT" and msg_type != "PAD":
-        print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT or PAD, Payload: {data_iv}")
+        print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT or PAD, Payload: {cipher_block}")
         return
 
     decrypted_block = cipher.cbc_decrypt(cipher_block, round_key_list, current_iv)
@@ -172,19 +172,19 @@ def client_file_transfer_thread(conn, addr):
           f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, Decrypted Payload: ", end="")
     print(decrypted_block.decode('utf-8', 'replace'), end="")
 
-    output_filename = f"{addr[0]}" + decrypted_block.decode('utf-8', 'replace')
-    current_iv = decrypted_block
+    output_filename = f"{addr[0]}_" + decrypted_block.decode('utf-8', 'replace')
+    current_iv = cipher_block
     counter += 1
 
     print(f"Server Response: ACK")
     send_message_type(socket=conn, msg_type="ACK", payload="Server ACK".encode('utf-8'))
 
-    msg_type, payload = receive_message_type(socket=conn)
+    msg_type, cipher_block = receive_message_type(socket=conn)
 
     while msg_type != "EOT":
         with open(output_filename, "wb") as output_file:
             if msg_type != "DAT" and msg_type != "PAD":
-                print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT or PAD, Payload: {data_iv}")
+                print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT or PAD, Payload: {cipher_block}")
                 return
 
             if msg_type == "PAD":
@@ -197,7 +197,7 @@ def client_file_transfer_thread(conn, addr):
             print(decrypted_block.decode('utf-8', 'replace'), end="")
 
             output_file.write(decrypted_block)
-            current_iv = decrypted_block
+            current_iv = cipher_block
             counter += 1
 
             print(f"Server Response: ACK")
