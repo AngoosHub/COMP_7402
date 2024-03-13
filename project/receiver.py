@@ -102,12 +102,12 @@ def client_file_transfer_thread(conn, addr):
         shared_key_hash = shake_256(shared_key_compressed.encode("utf8")).digest(16)
         print(f"--------------------------------------------------------------------------------\n"
               f"Client IP: {addr[0]}\n"
-              f"Received Msg_Type: {msg_type}, Payload: {data}\n"
-              f"Client public key:  {data}\n"
-              f"Server public key:  {public_key_compressed}\n"
-              f"Server private key: {hex(private_key)}\n\n"
-              f"Sending Server public key. Msg_Type: KEY, Payload: {public_key_compressed}\n\n"
-              f"Server shared key ({addr[0]}): {shared_key_compressed}\n\n"
+              f"Received Msg_Type: {msg_type}, Payload: {data[2:]}\n"
+              f"Client public key:  {data[2:]}\n"
+              f"Server public key:  {public_key_compressed[2:]}\n"
+              f"Server private key: {private_key:x}\n\n"
+              f"Sending Server public key. Msg_Type: KEY, Payload: {public_key_compressed[2:]}\n\n"
+              f"Server shared key ({addr[0]}): {shared_key_compressed[2:]}\n\n"
               f"Server Shared Key Hash: {shared_key_hash.hex()}\n\n")
         # conn.sendall(public_key_compressed.encode("utf8"))
         send_message_type(socket=conn, msg_type="KEY", payload=public_key_compressed.encode("utf-8"))
@@ -127,12 +127,12 @@ def client_file_transfer_thread(conn, addr):
 
         print(f"--------------------------------------------------------------------------------\n"
               f"Client IP: {addr[0]}\n"
-              f"Received Msg_Type: {msg_type}, Payload: {data_iv}\n"
-              f"Client IV (Nonce) public key:  {data_iv}\n"
-              f"Server IV (Nonce) public key:  {public_key_iv_compressed}\n"
-              f"Server IV (Nonce) private key: {hex(private_key_iv)}\n\n"
-              f"Sending Server IV (Nonce) public key. Msg_Type: KEY, Payload: {public_key_iv_compressed}\n\n"
-              f"Server IV (Nonce) shared key ({addr[0]}): {shared_key_iv_compressed}\n\n"
+              f"Received Msg_Type: {msg_type}, Payload: {data_iv[2:]}\n"
+              f"Client IV (Nonce) public key:  {data_iv[2:]}\n"
+              f"Server IV (Nonce) public key:  {public_key_iv_compressed[2:]}\n"
+              f"Server IV (Nonce) private key: {private_key_iv:x}\n\n"
+              f"Sending Server IV (Nonce) public key. Msg_Type: KEY, Payload: {public_key_iv_compressed[2:]}\n\n"
+              f"Server IV (Nonce) shared key ({addr[0]}): {shared_key_iv_compressed[2:]}\n\n"
               f"Server Shared Key IV (Nonce) Hash: {shared_key_iv_hash.hex()}\n\n")
         # conn.sendall(public_key_iv_compressed.encode("utf8"))
         send_message_type(socket=conn, msg_type="KEY", payload=public_key_iv_compressed.encode("utf-8"))

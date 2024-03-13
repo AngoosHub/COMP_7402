@@ -126,50 +126,50 @@ def start_sender():
 
         # Generate pub priv keys.
         private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
-        print(f"Client public key:  {public_key_compressed}")
-        print(f"Client private key: {hex(private_key)}\n")
+        print(f"Client public key:  {public_key_compressed[2:]}")
+        print(f"Client private key: {private_key:x}\n")
 
         # Exchange public keys
         # my_sock.sendall(public_key_compressed.encode("utf-8"))
         # data = my_sock.recv(1024).decode("utf-8")
-        print(f"Sending public key to server. Msg_Type: KEY, Payload: {public_key_compressed}\n")
+        print(f"Sending public key to server. Msg_Type: KEY, Payload: {public_key_compressed[2:]}\n")
         send_message_type(socket=my_sock, msg_type="KEY", payload=public_key_compressed.encode("utf-8"))
         msg_type, payload = receive_message_type(socket=my_sock)
         data = payload.decode('utf-8')
         if msg_type != "KEY":
             print(f"Received Unexpected Msg_Type: {msg_type}, Expected KEY, Payload: {data}")
             return
-        print(f"Received Msg_Type: {msg_type}, Payload: {data}")
-        print(f"Server public key: {data}\n")
+        print(f"Received Msg_Type: {msg_type}, Payload: {data[2:]}")
+        print(f"Server public key: {data[2:]}\n")
 
         # Calculate shared key
         shared_key, shared_key_compressed = calculate_shared_key(private_key=private_key, compressed_key=data)
-        print(f"Client shared key:  {shared_key_compressed}\n")
+        print(f"Client shared key:  {shared_key_compressed[2:]}\n")
         shared_key_hash = shake_256(shared_key_compressed.encode("utf8")).digest(16)
         print(f"Client Shared Key Hash: {shared_key_hash.hex()}\n")
 
         # Repeat for Initalization Vector
         private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
-        print(f"Client IV (Nonce) public key:  {public_key_compressed}")
-        print(f"Client IV (Nonce) private key: {hex(private_key)}\n")
+        print(f"Client IV (Nonce) public key:  {public_key_compressed[2:]}")
+        print(f"Client IV (Nonce) private key: {private_key:x}\n")
 
         # Exchange public keys
         # my_sock.sendall(public_key_compressed.encode("utf-8"))
         # data_iv = my_sock.recv(1024).decode("utf-8")
         # print(f"Server IV (Nonce) public key: {data_iv}\n")
-        print(f"Sending IV (Nonce) public key to server. Msg_Type: KEY, Payload: {public_key_compressed}\n")
+        print(f"Sending IV (Nonce) public key to server. Msg_Type: KEY, Payload: {public_key_compressed[2:]}\n")
         send_message_type(socket=my_sock, msg_type="KEY", payload=public_key_compressed.encode("utf-8"))
         msg_type, payload = receive_message_type(socket=my_sock)
         data_iv = payload.decode('utf-8')
         if msg_type != "KEY":
-            print(f"Received Unexpected Msg_Type: {msg_type}, Expected KEY, Payload: {data_iv}")
+            print(f"Received Unexpected Msg_Type: {msg_type}, Expected KEY, Payload: {data_iv[2:]}")
             return
-        print(f"Received Msg_Type: {msg_type}, Payload: {data_iv}")
-        print(f"Server IV (Nonce) public key: {data_iv}\n")
+        print(f"Received Msg_Type: {msg_type}, Payload: {data_iv[2:]}")
+        print(f"Server IV (Nonce) public key: {data_iv[2:]}\n")
 
         # Calculate shared key
         shared_key_iv, shared_key_iv_compressed = calculate_shared_key(private_key=private_key, compressed_key=data_iv)
-        print(f"Client IV (Nonce) shared key: {shared_key_iv_compressed}\n")
+        print(f"Client IV (Nonce) shared key: {shared_key_iv_compressed[2:]}\n")
         shared_key_iv_hash = shake_256(shared_key_iv_compressed.encode("utf8")).digest(16)
         print(f"Client Shared Key IV (Nonce) Hash: {shared_key_iv_hash.hex()}\n")
 
