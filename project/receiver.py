@@ -87,66 +87,75 @@ def start_receiver():
 
 
 def client_file_transfer_thread(conn, addr):
-
-    data = conn.recv(1024).decode('utf8')
-    if data:
+    msg_type, payload = receive_message_type(socket=conn)
+    if msg_type != "EOT":
+        data = payload.decode('utf-8')
+        if msg_type != "KEY":
+            print(f"Received Unexpected Msg_Type: {msg_type}, Expected KEY, Payload: {data}")
+            return
         # Generate pub priv keys.
         private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
         # "{conn.getpeername()}: \t{data}"
 
         # Calculate shared key and send server public key to client
         shared_key, shared_key_compressed = calculate_shared_key(private_key=private_key, compressed_key=data)
-        conn.sendall(public_key_compressed.encode("utf8"))
+        shared_key_hash = shake_256(shared_key_compressed.encode("utf8")).digest(16)
         print(f"--------------------------------------------------------------------------------\n"
-              f"Client Connected: {conn}, {addr}\n"
+              f"Client IP: {addr[0]}\n"
+              f"Received Msg_Type: {msg_type}, Payload: {data}\n"
               f"Client public key:  {data}\n"
               f"Server public key:  {public_key_compressed}\n"
               f"Server private key: {hex(private_key)}\n\n"
-              f"Server shared key ({conn.getpeername()}): {shared_key_compressed}\n\n"
-              f"Sending Server public key: {public_key_compressed}\n\n"
-              f"--------------------------------------------------------------------------------\n\n")
+              f"Sending Server public key. Msg_Type: KEY, Payload: {public_key_compressed}\n\n"
+              f"Server shared key ({addr[0]}): {shared_key_compressed}\n\n"
+              f"Server Shared Key Hash: {shared_key_hash.hex()}\n\n")
+        # conn.sendall(public_key_compressed.encode("utf8"))
+        send_message_type(socket=conn, msg_type="KEY", payload=public_key_compressed.encode("utf-8"))
 
         # Repeat for Initialization Vector
-        data_iv = conn.recv(1024).decode('utf8')
+        # data_iv = conn.recv(1024).decode('utf8')
+        msg_type, payload = receive_message_type(socket=conn)
+        data_iv = payload.decode('utf-8')
+        if msg_type != "KEY":
+            print(f"Received Unexpected Msg_Type: {msg_type}, Expected KEY, Payload: {data_iv}")
+            return
 
         private_key_iv, public_key_iv, public_key_iv_compressed = generate_ECDH_pub_priv_keys()
         shared_key_iv, shared_key_iv_compressed = calculate_shared_key(private_key=private_key_iv,
                                                                        compressed_key=data_iv)
-        conn.sendall(public_key_iv_compressed.encode("utf8"))
-
-        print(f"--------------------------------------------------------------------------------\n"
-              f"Client: {conn.getpeername()}, {addr}\n"
-              f"Client IV public key:  {data_iv}\n"
-              f"Server IV public key:  {public_key_iv_compressed}\n"
-              f"Server IV private key: {hex(private_key_iv)}\n\n"
-              f"Server IV shared key ({conn.getpeername()}): {shared_key_iv_compressed}\n\n"
-              f"Sending Server IV public key: {public_key_iv_compressed}\n\n"
-              f"--------------------------------------------------------------------------------\n\n")
-
-
-        # Decrypt cipher text
-        cipher_text = conn.recv(1024)
-
-        # Begin Decryption
-        shared_key_hash = shake_256(shared_key_compressed.encode("utf8")).digest(16)
         shared_key_iv_hash = shake_256(shared_key_iv_compressed.encode("utf8")).digest(16)
 
-        print(f"Server Shared Key Hash: {shared_key_hash.hex()}\n\n"
-              f"Server Shared Key IV Hash: {shared_key_iv_hash.hex()}\n\n")
+        print(f"--------------------------------------------------------------------------------\n"
+              f"Client IP: {addr[0]}\n"
+              f"Received Msg_Type: {msg_type}, Payload: {data_iv}\n"
+              f"Client IV (Nonce) public key:  {data_iv}\n"
+              f"Server IV (Nonce) public key:  {public_key_iv_compressed}\n"
+              f"Server IV (Nonce) private key: {hex(private_key_iv)}\n\n"
+              f"Sending Server IV (Nonce) public key. Msg_Type: KEY, Payload: {public_key_iv_compressed}\n\n"
+              f"Server IV (Nonce) shared key ({addr[0]}): {shared_key_iv_compressed}\n\n"
+              f"Server Shared Key IV (Nonce) Hash: {shared_key_iv_hash.hex()}\n\n")
+        # conn.sendall(public_key_iv_compressed.encode("utf8"))
+        send_message_type(socket=conn, msg_type="KEY", payload=public_key_iv_compressed.encode("utf-8"))
 
+        # Decrypt cipher text
+        msg_type, cipher_text = receive_message_type(socket=conn)
+        if msg_type != "DAT":
+            print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT, Payload: {data_iv}")
+            return
+
+        # Begin Decryption
         key = int.from_bytes(shared_key_hash, cipher.BYTEORDER)
         IV = shared_key_iv_hash
         round_key_list = cipher.subkey_generation(key)
 
         # output_text = cipher.cbc_encrypt(file_data, round_key_list, IV)
         output_text = cipher.cbc_decrypt(cipher_text, round_key_list, IV)
-        print(f"Ciphertext: {cipher_text.decode('utf-8', 'replace')}\n\n"
+        print(f"--------------------------------------------------------------------------------\n"
+              f"Client IP: {addr[0]}\n"
+              f"Received Msg_Type: {msg_type}, Ciphertext/Payload: {cipher_text.decode('utf-8', 'replace')}\n\n"
               f"Decrypted Result: {output_text.decode('utf-8', 'replace')}\n\n")
-
     else:
-        conn.close()
-
-
+        return
 
 
 # def server_ECDH_exchange(sender_public_key_compressed):

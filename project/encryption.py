@@ -28,7 +28,7 @@ from hashlib import sha256, shake_256
 
 
 curve = registry.get_curve('brainpoolP256r1')
-print('Curve:', curve)
+# print('Curve:', curve)
 p = 76884956397045344220809746629001649093037950200943055203735601445031516197751
 a = curve.a
 b = curve.b

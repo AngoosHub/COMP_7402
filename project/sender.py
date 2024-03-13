@@ -112,7 +112,8 @@ def start_sender():
     #     else:
     #         message = plaintext
     #         break
-    message = 'fortuneofthesedaysthatonemaythinkwhatonelikesandsaywhatonethinks'.encode('utf-8')
+    # message = 'fortuneofthesedaysthatonemaythinkwhatonelikesandsaywhatonethinks'.encode('utf-8')
+    test_message = 'Test Msg for ECDH key and Cipher encrypt/decrypt is successful.'.encode('utf-8')
 
 
     # IPv4 Socket connection to receiver.
@@ -120,8 +121,8 @@ def start_sender():
         # Initiate TCP connection to server
         my_sock.setsockopt(sock.SOL_SOCKET, sock.SO_REUSEADDR, 1)
         my_sock.connect((address, port))
-        f"--------------------------------------------------------------------------------"
-        f"Connected to Server: {my_sock.getpeername()}, {address}"
+        print(f"--------------------------------------------------------------------------------\n"
+              f"Connected to Server: {my_sock.getpeername()}")
 
         # Generate pub priv keys.
         private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
@@ -129,51 +130,99 @@ def start_sender():
         print(f"Client private key: {hex(private_key)}\n")
 
         # Exchange public keys
-        my_sock.sendall(public_key_compressed.encode("utf-8"))
-        data = my_sock.recv(1024).decode("utf-8")
+        # my_sock.sendall(public_key_compressed.encode("utf-8"))
+        # data = my_sock.recv(1024).decode("utf-8")
+        print(f"Sending public key to server. Msg_Type: KEY, Payload: {public_key_compressed}\n")
+        send_message_type(socket=my_sock, msg_type="KEY", payload=public_key_compressed.encode("utf-8"))
+        msg_type, payload = receive_message_type(socket=my_sock)
+        data = payload.decode('utf-8')
+        if msg_type != "KEY":
+            print(f"Received Unexpected Msg_Type: {msg_type}, Expected KEY, Payload: {data}")
+            return
+        print(f"Received Msg_Type: {msg_type}, Payload: {data}")
         print(f"Server public key: {data}\n")
 
         # Calculate shared key
         shared_key, shared_key_compressed = calculate_shared_key(private_key=private_key, compressed_key=data)
         print(f"Client shared key:  {shared_key_compressed}\n")
+        shared_key_hash = shake_256(shared_key_compressed.encode("utf8")).digest(16)
+        print(f"Client Shared Key Hash: {shared_key_hash.hex()}\n")
 
         # Repeat for Initalization Vector
         private_key, public_key, public_key_compressed = generate_ECDH_pub_priv_keys()
-        print(f"Client IV public key:  {public_key_compressed}")
-        print(f"Client IV private key: {hex(private_key)}\n")
+        print(f"Client IV (Nonce) public key:  {public_key_compressed}")
+        print(f"Client IV (Nonce) private key: {hex(private_key)}\n")
 
         # Exchange public keys
-        my_sock.sendall(public_key_compressed.encode("utf-8"))
-        data_iv = my_sock.recv(1024).decode("utf-8")
-        print(f"Server IV public key: {data_iv}\n")
+        # my_sock.sendall(public_key_compressed.encode("utf-8"))
+        # data_iv = my_sock.recv(1024).decode("utf-8")
+        # print(f"Server IV (Nonce) public key: {data_iv}\n")
+        print(f"Sending IV (Nonce) public key to server. Msg_Type: KEY, Payload: {public_key_compressed}\n")
+        send_message_type(socket=my_sock, msg_type="KEY", payload=public_key_compressed.encode("utf-8"))
+        msg_type, payload = receive_message_type(socket=my_sock)
+        data_iv = payload.decode('utf-8')
+        if msg_type != "KEY":
+            print(f"Received Unexpected Msg_Type: {msg_type}, Expected KEY, Payload: {data_iv}")
+            return
+        print(f"Received Msg_Type: {msg_type}, Payload: {data_iv}")
+        print(f"Server IV (Nonce) public key: {data_iv}\n")
 
         # Calculate shared key
         shared_key_iv, shared_key_iv_compressed = calculate_shared_key(private_key=private_key, compressed_key=data_iv)
-        print(f"Client IV shared key: {shared_key_iv_compressed}\n")
-        print(f"--------------------------------------------------------------------------------\n")
-
+        print(f"Client IV (Nonce) shared key: {shared_key_iv_compressed}\n")
+        shared_key_iv_hash = shake_256(shared_key_iv_compressed.encode("utf8")).digest(16)
+        print(f"Client Shared Key IV (Nonce) Hash: {shared_key_iv_hash.hex()}\n")
 
         # Begin Encryption
-        shared_key_hash = shake_256(shared_key_compressed.encode("utf8")).digest(16)
-        shared_key_iv_hash = shake_256(shared_key_iv_compressed.encode("utf8")).digest(16)
-
-        print(f"Client Shared Key Hash: {shared_key_hash.hex()}\n")
-        print(f"Client Shared Key IV Hash: {shared_key_iv_hash.hex()}\n")
-
         key = int.from_bytes(shared_key_hash, cipher.BYTEORDER)
         IV = shared_key_iv_hash
         round_key_list = cipher.subkey_generation(key)
 
         # output_text = cipher.cbc_encrypt(file_data, round_key_list, IV)
-        output_text = cipher.cbc_encrypt(message, round_key_list, IV)
-        print("Ciphertext: {output_text.decode('utf-8', 'replace')}\n")
+        output_text = cipher.cbc_encrypt(test_message, round_key_list, IV)
+        print(f"Test plaintext: {test_message.decode('utf-8', 'replace')}")
+        print(f"Test Ciphertext: {output_text.decode('utf-8', 'replace')}")
+        print(f"Sending Ciphertext. Msg_Type: DAT, Payload: {output_text.decode('utf-8', 'replace')}\n")
+        send_message_type(socket=my_sock, msg_type="DAT", payload=output_text)
 
-        my_sock.sendall(output_text)
-        print("Sending Ciphertext: ", output_text.decode('utf-8', 'replace'), "\n")
+        print(f"--------------------------------------------------------------------------------\n")
 
         my_sock.close()
 
 
+def send_message_type(socket: sock.socket, msg_type: str, payload: bytes):
+    if msg_type.upper() == "KEY":
+        prefix = "KEY".encode('utf-8')
+    elif msg_type.upper() == "ACK":
+        prefix = "ACK".encode('utf-8')
+    elif msg_type.upper() == "DAT":
+        prefix = "DAT".encode('utf-8')
+    elif msg_type.upper() == "EOT":
+        prefix = "EOT".encode('utf-8')
+    else:
+        print(f"Unsupported message type: {msg_type}, defaulting to EOT.")
+        prefix = "EOT".encode('utf-8')
+
+    prefixed_payload = prefix + payload
+    socket.send(prefixed_payload)
+
+
+def receive_message_type(socket: sock.socket):
+    message = socket.recv(1024)
+
+    if not message:
+        socket.close()
+        print("Unexpected connection closed.")
+        return "EOT", b''
+
+    msg_type = message[0:3].decode("utf-8").upper()
+    payload = message[3:]
+
+    if msg_type == "EOT":
+        print(f"Client IP: {socket.getpeername()[1]}, Received Msg_Type: {msg_type}, Closing connection.")
+        socket.close()
+
+    return msg_type, payload
 
 
 
