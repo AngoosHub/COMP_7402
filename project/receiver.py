@@ -194,7 +194,7 @@ def client_file_transfer_thread(conn, addr):
             print(f"--------------------------------------------------------------------------------\n"
                   f"Client IP: {addr[0]}\n"
                   f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, "
-                  f"IV: {int.from_bytes(current_iv, cipher.BYTEORDER)} \nDecrypted Payload: ", end="")
+                  f"IV (hash): {IV} \nDecrypted Payload: ", end="")
             print(decrypted_block.decode('utf-8', 'replace'), end="")
 
             output_file.write(decrypted_block)
