@@ -169,14 +169,14 @@ def client_file_transfer_thread(conn, addr):
     decrypted_block = cipher.cbc_decrypt(cipher_block, round_key_list, current_iv)
     print(f"--------------------------------------------------------------------------------\n"
           f"Client IP: {addr[0]}\n"
-          f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, Decrypted Payload: ", end="")
-    print(decrypted_block.decode('utf-8', 'replace'), end="")
+          f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, IV (hash): {IV.hex()} \nDecrypted Payload: ", end="")
+    print(decrypted_block.decode('utf-8', 'replace'))
 
     output_filename = f"{addr[0]}_" + decrypted_block.decode('utf-8', 'replace')
     current_iv = cipher_block
     counter += 1
 
-    print(f", Server Response: ACK")
+    print(f"Server Response: ACK")
     send_message_type(socket=conn, msg_type="ACK", payload="Server ACK".encode('utf-8'))
 
     msg_type, cipher_block = receive_message_type(socket=conn)
@@ -194,14 +194,14 @@ def client_file_transfer_thread(conn, addr):
             print(f"--------------------------------------------------------------------------------\n"
                   f"Client IP: {addr[0]}\n"
                   f"Received Encrypted Block: {counter}. Msg_Type: {msg_type}, "
-                  f"IV (hash): {IV} \nDecrypted Payload: ", end="")
-            print(decrypted_block.decode('utf-8', 'replace'), end="")
+                  f"IV (hash): {IV.hex()} \nDecrypted Payload: ", end="")
+            print(decrypted_block.decode('utf-8', 'replace'))
 
             output_file.write(decrypted_block)
             current_iv = cipher_block
             counter += 1
 
-            print(f", Server Response: ACK")
+            print(f"Server Response: ACK")
             send_message_type(socket=conn, msg_type="ACK", payload="Server ACK".encode('utf-8'))
 
             msg_type, cipher_block = receive_message_type(socket=conn)
