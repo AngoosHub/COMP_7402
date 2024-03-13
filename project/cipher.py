@@ -487,7 +487,9 @@ def cbc_decrypt(data, round_key_list, iv, unpad=True):
 
     # unpad last block
     if unpad:
+        print(f"UNPAD: {plaintext_block_list}")
         plaintext_block_list[-1] = unpad_block(plaintext_block_list[-1])
+        print(f"UNPAD: {plaintext_block_list}")
 
     return b''.join(plaintext_block_list)
 

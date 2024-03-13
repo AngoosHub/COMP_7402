@@ -201,7 +201,7 @@ def start_sender():
         try:
             with open(args.filename, "rb") as input_file:
                 for block in iter(partial(input_file.read, 16), b''):
-                    print(len(block))
+                    print(f"IV: {current_iv}")
                     if len(block) < 16:
                         encrypted_block = cipher.cbc_encrypt(block, round_key_list, current_iv)
                         print(f"--------------------------------------------------------------------------------")
