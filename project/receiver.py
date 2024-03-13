@@ -162,7 +162,7 @@ def client_file_transfer_thread(conn, addr):
     counter = 0
     current_iv = IV
     msg_type, cipher_block = receive_message_type(socket=conn)
-    if msg_type != "DAT" or msg_type != "PAD":
+    if msg_type != "DAT" and msg_type != "PAD":
         print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT or PAD, Payload: {data_iv}")
         return
 
@@ -183,7 +183,7 @@ def client_file_transfer_thread(conn, addr):
 
     while msg_type != "EOT":
         with open(output_filename, "wb") as output_file:
-            if msg_type != "DAT" or msg_type != "PAD":
+            if msg_type != "DAT" and msg_type != "PAD":
                 print(f"Received Unexpected Msg_Type: {msg_type}, Expected DAT or PAD, Payload: {data_iv}")
                 return
 

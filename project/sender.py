@@ -185,7 +185,7 @@ def start_sender():
 
         counter = 0
         current_iv = IV
-        encrypted_block = cipher.cbc_encrypt(args.filename, round_key_list, current_iv)
+        encrypted_block = cipher.cbc_encrypt(args.filename.encode("utf-8"), round_key_list, current_iv)
         print(f"--------------------------------------------------------------------------------")
         print(f"Sending Encrypted Block: {counter}. Msg_Type: PAD, Payload: ", end="")
         print(encrypted_block.decode('utf-8', 'replace'))
