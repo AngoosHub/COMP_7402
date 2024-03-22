@@ -16,7 +16,7 @@ sender.py
     then send it to the receiver to decrypt it with shared key.
 ----------------------------------------------------------------------------------------------------
 """
-
+import socket
 from argparse import ArgumentParser
 from encryption import *
 import cipher
@@ -110,12 +110,15 @@ def start_sender():
     # message = 'fortuneofthesedaysthatonemaythinkwhatonelikesandsaywhatonethinks'.encode('utf-8')
     test_message = 'Test Message!'.encode('utf-8')
 
-
     # IPv4 Socket connection to receiver.
     with sock.socket(sock.AF_INET, sock.SOCK_STREAM) as my_sock:
         # Initiate TCP connection to server
         my_sock.setsockopt(sock.SOL_SOCKET, sock.SO_REUSEADDR, 1)
-        my_sock.connect((address, port))
+        try:
+            my_sock.connect((address, port))
+        except socket.gaierror as gai_err:
+            print(f"Error, invalid ip address provided. Error: {gai_err}")
+            return
         print(f"--------------------------------------------------------------------------------\n"
               f"Connected to Server: {my_sock.getpeername()}")
 
