@@ -71,7 +71,7 @@ def start_receiver():
             print("Invalid port number, must be an number between 0 and 65535.")
             return
         port = int(args.port)
-        if port >= 0 or port <= 65535:
+        if port <= 0 or port >= 65535:
             print("Invalid port number, must be an number between 0 and 65535.")
             return
 
